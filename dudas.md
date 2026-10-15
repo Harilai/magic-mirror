@@ -14,7 +14,7 @@
 ## - Instalar dependencias -
     "npm run install-mm:dev"
 ## - Instalar Archivo Conf -
-    "cp config/config.js.sample config/config.js"
+    "cp config/config.js.sample config/config.js" Ahora mismo no hace falta ya que hay uno creado.
 ## - Comprobar - 
     "npm run start:windows"
 
