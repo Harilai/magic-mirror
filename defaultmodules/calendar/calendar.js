@@ -11,7 +11,7 @@ Module.register("calendar", {
 		defaultSymbol: "calendar-days", // Fontawesome Symbol see https://fontawesome.com/search?ic=free&o=r
 		defaultSymbolClassName: "fas fa-fw fa-",
 		showLocation: false,
-		displayRepeatingCountTitle: false,
+		displayRepeatingCountTitle: true,
 		defaultRepeatingCountTitle: "",
 		maxTitleLength: 25,
 		maxLocationTitleLength: 25,

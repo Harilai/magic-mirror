@@ -49,18 +49,32 @@ const config = {
 		},
 		{
 			module: "clock",
-			position: "top_left"
+			position: "top_left",
+			config: {
+				displaySeconds: false
+			}
 		},
 		{
 			module: "calendar",
-			header: "US Holidays",
+			header: "Fechas Importantes",
 			position: "top_left",
 			config: {
+				displaySymbol: false,
+				timeFormat: "absolute",
+				dateFormat: "D MMM",
+				fade: false,
+				maximumEntries: 5,
 				calendars: [
 					{
 						fetchInterval: 7 * 24 * 60 * 60 * 1000,
 						symbol: "calendar-check",
-						url: "https://ics.calendarlabs.com/76/mm3137/US_Holidays.ics"
+						url: "https://calendar.google.com/calendar/ical/danitejeroperedo13%40gmail.com/public/basic.ics"
+					},
+					{
+						fetchInterval: 7 * 24 * 60 * 60 * 1000,
+						symbol: "calendar-check",
+						url: "http://localhost:8080/config/cumpleanos-prueba.ics",
+						repeatingCountTitle: " años"
 					}
 				]
 			}
@@ -73,6 +87,10 @@ const config = {
 			module: "weather",
 			position: "top_right",
 			config: {
+				showFeelsLike: true,
+				showWind: true,
+				showSun: true,
+				roundTemp: true,
 				weatherProvider: "openmeteo",
 				type: "current",
 				lat: 43.4184077,
@@ -82,12 +100,15 @@ const config = {
 		{
 			module: "weather",
 			position: "top_right",
-			header: "Weather Forecast",
 			config: {
 				weatherProvider: "openmeteo",
 				type: "forecast",
 				lat: 43.4184077,
-				lon: -3.8402247
+				lon: -3.8402247,
+				maxNumberOfDays: 5,
+				fade: false,
+				colored: false,
+				roundTemp: true
 			}
 		},
 		{
