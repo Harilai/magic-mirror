@@ -51,7 +51,7 @@ const config = {
 		},
 		{
 			module: "MMM-TodayEvents",
-			position: "lower_third",
+			position: "lower_fourth",
 			config: {
 				title: "Hoy",    // texto que va delante
 				maxItems: 3,     // cuántos eventos como máximo
@@ -99,7 +99,7 @@ const config = {
 		},
 		{
 			module: "compliments",
-			position: "lower_third"
+			position: "bottom_bar"
 		},
 		{
 			module: "weather",
@@ -129,22 +129,22 @@ const config = {
 				roundTemp: true
 			}
 		},
-		{
-			module: "newsfeed",
-			position: "bottom_bar",
-			config: {
-				feeds: [
-					{
-						title: "New York Times",
-						url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
-					}
-				],
-				showSourceTitle: true,
-				showPublishDate: true,
-				broadcastNewsFeeds: true,
-				broadcastNewsUpdates: true
-			}
-		},
+		// {
+		// 	module: "newsfeed",
+		// 	position: "bottom_bar",
+		// 	config: {
+		// 		feeds: [
+		// 			{
+		// 				title: "New York Times",
+		// 				url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
+		// 			}
+		// 		],
+		// 		showSourceTitle: true,
+		// 		showPublishDate: true,
+		// 		broadcastNewsFeeds: true,
+		// 		broadcastNewsUpdates: true
+		// 	}
+		// },
 	]
 };
 

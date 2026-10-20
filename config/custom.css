@@ -195,3 +195,17 @@ header {
   color: #fff;
   font-weight: 500;
 }
+
+/* CSS PARA NUEVA REGION FOURTH */
+
+.region.fourth {
+  width: 100%;
+  text-align: center;
+  transform: translateY(-50%);
+}
+
+.region.lower.fourth {
+  top: 80%;
+}
+
+/* ----------------------------- */

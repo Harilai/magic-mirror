@@ -4,7 +4,7 @@ const config = {
 	modules:
 		// Using exotic content. This is why don't accept go to JSON configuration file
 		(() => {
-			const positions = ["top_bar", "top_left", "top_center", "top_right", "upper_third", "middle_center", "lower_third", "bottom_left", "bottom_center", "bottom_right", "bottom_bar", "fullscreen_above", "fullscreen_below"];
+			const positions = ["top_bar", "top_left", "top_center", "top_right", "upper_third", "middle_center", "lower_third", "lower_fourth", "bottom_left", "bottom_center", "bottom_right", "bottom_bar", "fullscreen_above", "fullscreen_below"];
 			const modules = Array();
 			for (const idx in positions) {
 				modules.push({

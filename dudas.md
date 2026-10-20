@@ -34,6 +34,9 @@
 ## - Magic Mover -
     Se ha implementado este modulo para prevenir pixeles muertos o quemados en el pantalla. Al mostrar todo el rato lo mismo podria suceder y no queremos. Lo que hace es cada cierto tiempo (10 minutos) el contenido se mueve x pixeles (15 en este caso) preveniendo que se este usando el mismo pixel meses. url del github "https://github.com/Lavve/MMM-MagicMover"
 
+## - Today Events -
+    He creado un nuevo modulo llamado MMM-TodayEvents el cual hace que saque un mensaje de las tareas del calendario asignadas ese dia. Ej: Si en el calendario tienes puesto que el 20 de agosto es el cumple de alguien, ese dia te saldra un mensaje en pantalla recordandolo
+
 
 
 # - Posibles Implementaciones -
