@@ -4,20 +4,26 @@ Module.register("compliments", {
 	// Module config defaults.
 	defaults: {
 		compliments: {
-			anytime: ["Hey there sexy!"],
-			morning: ["Good morning, handsome!", "Enjoy your day!", "How was your sleep?"],
-			afternoon: ["Hello, beauty!", "You look sexy!", "Looking good today!"],
-			evening: ["Wow, you look hot!", "You look nice!", "Hi, sexy!"],
-			"....-01-01": ["Happy new year!"]
+			anytime: [],
+			morning: ["Buenos días", "Que tengas un buen día", "A por el día"],
+			afternoon: ["Buenas tardes", "Que la tarde vaya bien", "¿Hoy tienes macaya?"],
+			evening: ["Buenas noches", "A descansar", "Ya toca dejar de estudiar"],
+			// Frases según el tiempo (cada tipo necesita su clave; de noche son night_...)
+			day_sprinkle: ["Hoy puede llover.\nCoge paraguas"],
+			day_showers: ["Hoy llueve.\nCoge paraguas"],
+			// Frases por fecha (los puntos son comodines: vale para cualquier año)
+			"....-01-01": ["Feliz año nuevo"],
+			"....-03-07": ["Felicidades Bby"],
+			"....-11-08": ["Hoy es el cumpleaños de Irene"]
 		},
-		updateInterval: 30000,
+		updateInterval: 3 * 60 * 1000,
 		remoteFile: null,
 		remoteFileRefreshInterval: 0,
-		fadeSpeed: 4000,
+		fadeSpeed: 2000,
 		morningStartTime: 3,
 		morningEndTime: 12,
 		afternoonStartTime: 12,
-		afternoonEndTime: 17,
+		afternoonEndTime: 20,
 		random: true,
 		specialDayUnique: false
 	},
@@ -261,7 +267,7 @@ Module.register("compliments", {
 	// Override dom generator.
 	getDom () {
 		const wrapper = document.createElement("div");
-		wrapper.className = this.config.classes ? this.config.classes : "thin xlarge bright pre-line";
+		wrapper.className = this.config.classes ? this.config.classes : "light medium normal pre-line";
 		// get the compliment text
 		const complimentText = this.getRandomCompliment();
 		// split it into parts on newline text

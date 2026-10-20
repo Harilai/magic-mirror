@@ -41,6 +41,24 @@ const config = {
 
 	modules: [
 		{
+			module: "MMM-MagicMover",
+			config: {
+				updateInterval: 10 * 60 * 1000,
+				ignoredRegions: [],
+				maxMove: 15,
+				moveWholescreen: false,
+			}
+		},
+		{
+			module: "MMM-TodayEvents",
+			position: "lower_third",
+			config: {
+				title: "Hoy",    // texto que va delante
+				maxItems: 3,     // cuántos eventos como máximo
+				showTime: true   // hora en los eventos que no son de todo el día
+			}
+		},
+		{
 			module: "alert",
 		},
 		{
@@ -73,7 +91,7 @@ const config = {
 					{
 						fetchInterval: 7 * 24 * 60 * 60 * 1000,
 						symbol: "calendar-check",
-						url: "http://localhost:8080/config/cumpleanos-prueba.ics",
+						url: "http://localhost:8080/defaultmodules/calendar/ics/cumpleanos.ics",
 						repeatingCountTitle: " años"
 					}
 				]

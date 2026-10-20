@@ -31,6 +31,9 @@
 ## - Tiempo -
     El tiempo se muestra por coordenadas ajustables en el config.js. Ahora estan puestas las de maliaño que se asemejan a las de santander. Esta configurado de modo que te muestre el tiempo de ahora y el de los proximos dias.
 
+## - Magic Mover -
+    Se ha implementado este modulo para prevenir pixeles muertos o quemados en el pantalla. Al mostrar todo el rato lo mismo podria suceder y no queremos. Lo que hace es cada cierto tiempo (10 minutos) el contenido se mueve x pixeles (15 en este caso) preveniendo que se este usando el mismo pixel meses. url del github "https://github.com/Lavve/MMM-MagicMover"
+
 
 
 # - Posibles Implementaciones -
@@ -52,14 +55,7 @@
     https://github.com/thobach/MMM-Gestures · último cambio en diciembre de 2022
 
     MMM-Remote-Control: web para el móvil con la que apagas el espejo, enciendes o apagas la pantalla y muestras u ocultas módulos.
-    https://github.com/Jopyth/MMM-Remote-Control · activo (octubre 2026)
-
-## Cuidado de la pantalla
-    MMM-MagicMover: evita que la pantalla se queme con contenido fijo.
-    https://github.com/Lavve/MMM-MagicMover · activo (septiembre 2026)
-
-    MMM-BurnIn: lo mismo, haciendo parpadear toda la pantalla.
-    https://github.com/werthdavid/MMM-BurnIn · último cambio en 2021
+    https://github.com/Jopyth/MMM-Remote-Control · activo (octubre 2026)   
     
 ## Contenido
     MMM-Meteosat: imágenes de satélite casi en tiempo real del servicio oficial de EUMETSAT, con la Tierra sobre fondo transparente pensado para espejos oscuros. Elegante y encaja con tu diseño.
