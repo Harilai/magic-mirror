@@ -1,0 +1,622 @@
+:root {
+  --sp-width: 360px;
+  --minimalist-height: 75px;
+  --minimalist-width: 100%;
+  --minimalist-cover-size: var(--minimalist-height);
+  --minimalist-button-size: 50px;
+
+  /* Paleta MagicMirror (nueva) */
+  --mm-cyan: #71B6D9;
+  --mm-cream: #FCFBE3;
+  --mm-blue: #374E8C;
+  --mm-glass: rgba(255, 255, 255, 0.10);
+  --mm-glass-press: rgba(113, 182, 217, 0.30);
+}
+
+#SPOTIFY {
+  position: relative;
+  width: var(--sp-width);
+  border-radius:10px;
+  box-sizing:border-box;
+  color:#EEE;
+  font-weight:normal;
+  font-size:18px;
+  text-align:left;
+  line-height:120%;
+  text-shadow:black 2px 2px 2px;
+}
+
+#SPOTIFY .hidden {
+  display:none;
+}
+
+
+/* #SPOTIFY.inactive {
+} */
+
+#SPOTIFY_BACKGROUND {
+  background-size: cover;
+  background-position: center center;
+  filter: blur(16px) opacity(90%) grayscale(33%);
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+}
+
+#SPOTIFY_FOREGROUND {
+  position:relative;
+  filter:none;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  box-sizing:border-box
+}
+
+#SPOTIFY_INFO {
+  width: calc(var(--sp-width) - 20px);
+}
+
+#SPOTIFY_INFO > * {
+  display:flex;
+  justify-content: flex-start;
+}
+
+#SPOTIFY_INFO .infoicon {
+  width: 20px;
+  margin-right:10px;
+  text-shadow:black 2px 2px 2px;
+  align-items:center;
+  text-align: center;
+  line-height: inherit;
+}
+
+#SPOTIFY_INFO .text {
+  width: calc(var(--sp-width) - 70px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display:inline-block;
+}
+
+#SPOTIFY_TITLE {
+  color: var(--mm-cream);
+  font-weight:bold;
+}
+
+#SPOTIFY_COVER {
+  width: calc(var(--sp-width) - 40px);
+  height: calc(var(--sp-width) - 40px);
+  margin-bottom:0.5vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#SPOTIFY_COVER_IMAGE {
+  max-width:100%;
+  max-height:100%;
+  border-radius:16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+.fade-in {
+  animation: fadeInOpacity 1s 1;
+  animation-timing-function: linear;
+}
+
+@keyframes fadeInOpacity {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+#SPOTIFY.pausing #SPOTIFY_COVER_IMAGE {
+  filter:brightness(50%) grayscale(75%);
+}
+
+#SPOTIFY.modal #SPOTIFY_COVER_IMAGE {
+  filter:brightness(30%) blur(5px);
+}
+
+#SPOTIFY_PROGRESS_TIME {
+  display:flex;
+  flex-direction:row;
+  justify-content:space-between;
+  font-size:14px;
+}
+
+/* Barra de progreso estilo Apple: fina, blanca sobre pista translucida */
+#SPOTIFY_PROGRESS_BAR {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-bottom: 14px;
+  height: 5px;
+  width: 100%;
+  position: relative;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.30);
+}
+
+progress[value]#SPOTIFY_PROGRESS_BAR::-webkit-progress-value {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 3px;
+}
+
+progress[value]#SPOTIFY_PROGRESS_BAR::-webkit-progress-bar {
+  background-color: rgba(255, 255, 255, 0.30);
+  border-radius: 3px;
+}
+
+#SPOTIFY_PROGRESS_TIME {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+  text-shadow: none;
+}
+
+/* Controles estilo Apple: iconos macizos, sin recuadros */
+#SPOTIFY_CONTROL {
+  display:flex;
+  flex-direction:row;
+  justify-content: space-between;
+  align-items: center;
+  font-size:20px;
+  color:#FFF;
+  margin-top: 2px;
+}
+
+#SPOTIFY_CONTROL > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+}
+
+#SPOTIFY_CONTROL > *:hover {
+  color: #FFF;
+}
+
+#SPOTIFY_CONTROL > *:active {
+  color: #FFF;
+  opacity: 0.7;
+  transform: scale(0.88);
+}
+
+/* Anterior (3.er boton) y siguiente (5.o): dos triangulos macizos */
+#SPOTIFY_CONTROL > *:nth-child(3),
+#SPOTIFY_CONTROL > *:nth-child(5) {
+  width: 44px;
+  height: 44px;
+  color: #FFF;
+}
+
+#SPOTIFY_CONTROL > *:nth-child(3) .iconify,
+#SPOTIFY_CONTROL > *:nth-child(5) .iconify {
+  display: none;
+}
+
+#SPOTIFY_CONTROL > *:nth-child(3)::before,
+#SPOTIFY_CONTROL > *:nth-child(5)::before {
+  content: "";
+  display: block;
+  width: 30px;
+  height: 30px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+#SPOTIFY_CONTROL > *:nth-child(5)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' stroke='black' stroke-width='1.6' stroke-linejoin='round' d='M3 5v14l9-7zM12 5v14l9-7z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' stroke='black' stroke-width='1.6' stroke-linejoin='round' d='M3 5v14l9-7zM12 5v14l9-7z'/%3E%3C/svg%3E");
+}
+
+#SPOTIFY_CONTROL > *:nth-child(3)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' stroke='black' stroke-width='1.6' stroke-linejoin='round' d='M21 5v14l-9-7zM12 5v14l-9-7z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' stroke='black' stroke-width='1.6' stroke-linejoin='round' d='M21 5v14l-9-7zM12 5v14l-9-7z'/%3E%3C/svg%3E");
+}
+
+/* Play / pausa: icono blanco grande, sin circulo */
+#SPOTIFY_CONTROL > #SPOTIFY_CONTROL_PLAY {
+  width: 56px;
+  height: 56px;
+  font-size: 40px;
+  background-color: transparent;
+  color: #FFF;
+  box-shadow: none;
+}
+
+#SPOTIFY_CONTROL .iconify {
+  justify-self: center;
+  align-self: center;
+}
+
+/* Ocultar cuentas (1.o), aleatorio (2.o) y repetir (6.o). Se dejan anterior, play, siguiente y dispositivo */
+#SPOTIFY_CONTROL > #SPOTIFY_CONTROL_ACCOUNTS,
+#SPOTIFY_CONTROL > *:nth-child(2),
+#SPOTIFY_CONTROL > *:nth-child(6) {
+  display: none;
+}
+
+#SPOTIFY_CONTROL {
+  justify-content: center;
+  gap: 14px;
+}
+
+#SPOTIFY_MODAL {
+  position: absolute;
+  width: inherit;
+  height: inherit;
+}
+
+#SPOTIFY_ACCOUNT_LIST, #SPOTIFY_DEVICE_LIST {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  width: inherit;
+  max-width: max-content;
+  background: rgba(0,0,0, 0.8);
+  border-radius: 6px;
+}
+
+#SPOTIFY_ACCOUNT_LIST > *, #SPOTIFY_DEVICE_LIST > *, #SPOTIFY_MODAL_LIST > * {
+  padding: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#SPOTIFY_ACCOUNT_LIST > *:hover, #SPOTIFY_ACCOUNT_LIST > *:active, #SPOTIFY_DEVICE_LIST > *:hover, #SPOTIFY_DEVICE_LIST > *:active, #SPOTIFY_MODAL_LIST > *:hover, #SPOTIFY_MODAL_LIST > *:active {
+  background-color:rgba(255,255,255,0.2);
+  border-radius: 6px;
+}
+
+#SPOTIFY_ACCOUNT_LIST .text, #SPOTIFY_DEVICE_LIST .text, #SPOTIFY_MODAL_LIST .text {
+  padding-left: 5px;
+}
+
+/* for MMM-Modal integration */
+#SPOTIFY_MODAL_LIST {
+  background: rgba(0,0,0);
+  border-radius: 6px;
+}
+
+/* style "mini" */
+#SPOTIFY.mini {
+  width: var(--sp-width);
+  font-size: 16px;
+}
+
+#SPOTIFY.mini #SPOTIFY_FOREGROUND {
+  flex-direction:row;
+  padding:0;
+}
+
+#SPOTIFY.mini .mdi {
+  font-size: 14px;
+}
+
+#SPOTIFY.mini .infoicon {
+  margin-right: 6px;
+}
+
+#SPOTIFY.mini #SPOTIFY_COVER {
+  width:calc(var(--sp-width) - 240px);
+  height:calc(var(--sp-width) - 240px);
+  padding:0;
+}
+
+#SPOTIFY.mini #SPOTIFY_COVER_IMAGE {
+  height:calc(var(--sp-width) - 240px);
+}
+
+#SPOTIFY.mini #SPOTIFY_INFO {
+  width: 240px;
+  padding-left:10px;
+  margin-top:5px;
+}
+
+#SPOTIFY.mini #SPOTIFY_PROGRESS_BAR {
+  margin:5px;
+  width: 95%;
+}
+
+#SPOTIFY.mini #SPOTIFY_PROGRESS_TIME {
+  display:flex;
+  margin: 0 5px;
+}
+
+#SPOTIFY.mini.noPlayback {
+  width:calc(var(--sp-width) - 240px);
+}
+
+#SPOTIFY.inactive #SPOTIFY_MISC > * {
+  display: none;
+}
+
+#SPOTIFY.inactive #SPOTIFY_MISC > #SPOTIFY_CONTROL {
+  display: flex;
+}
+
+#SPOTIFY.inactive #SPOTIFY_CONTROL > * {
+  display: none;
+}
+
+#SPOTIFY.inactive #SPOTIFY_CONTROL > #SPOTIFY_CONTROL_ACCOUNTS {
+  display: flex;
+}
+
+/* style "minimalistBar" */
+#SPOTIFY.minimalistBar {
+  width: var(--minimalist-width);
+  height: calc(var(--minimalist-height) + 1px);
+}
+
+#SPOTIFY.minimalistBar.bottomIn {
+  animation-duration: 1s;
+  animation-name: fadeInBottom;
+}
+
+#SPOTIFY.minimalistBar.bottomOut {
+  animation-duration: 1s;
+  animation-name: fadeOutBottom;
+  animation-fill-mode: forwards;
+}
+
+#SPOTIFY.minimalistBar.topIn {
+  animation-duration: 1s;
+  animation-name: fadeInTop;
+}
+
+#SPOTIFY.minimalistBar.topOut {
+  animation-duration: 1s;
+  animation-name: fadeOutTop;
+  animation-fill-mode: forwards;
+}
+
+@keyframes fadeInBottom {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 200%, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fadeOutBottom {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, 200%, 0);
+  }
+}
+
+@keyframes fadeInTop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -100%, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fadeOutTop {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, -100%, 0);
+  }
+}
+
+#SPOTIFY.minimalistBar.noPlayback #SPOTIFY_FOREGROUND,
+#SPOTIFY.minimalistBar.noPlayback #SPOTIFY_PROGRESS_BAR,
+#SPOTIFY.minimalistBar #SPOTIFY_BACKGROUND {
+  display: none;
+}
+
+#SPOTIFY.minimalistBar.pausing #SPOTIFY_PROGRESS_BAR, 
+#SPOTIFY.minimalistBar.pausing #SPOTIFY_MISC {
+  filter:brightness(50%) grayscale(75%);
+}
+
+#SPOTIFY.minimalistBar .text {
+  width: inherit;
+  margin-right: 0.5em;
+  white-space: nowrap;
+  display:inline-block;
+  font-size: 1em;
+}
+
+#SPOTIFY.minimalistBar #TEXT_BULLET {
+  margin-right: 0.5em;
+  white-space: nowrap;
+  display:inline-block;
+  color: grey;
+}
+
+#SPOTIFY.minimalistBar .iconify {
+  display: inline-block;
+  width: var(--minimalist-button-size);
+  height: var(--minimalist-button-size);
+  margin-right: 0px;
+}
+
+#SPOTIFY.minimalistBar .infoicon {
+  margin-right: 8px;
+}
+
+#SPOTIFY_VOLUME .mdi {
+  font-size: 20px;
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_PROGRESS_BAR {
+  position: relative;
+  width: var(--minimalist-width);
+  height: 1px;
+  border: 0px transparent;
+  margin-bottom: 4px;
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_FOREGROUND {
+  display: flex;
+  flex-direction:row;
+  justify-content: space-between;
+  padding:0;
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_COVER {
+  position: relative;
+  width:var(--minimalist-cover-size);
+  height:var(--minimalist-height);
+  padding:0;
+  z-index:1;
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_COVER_IMAGE {
+  height:var(--minimalist-height);
+  border-radius:0px;
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_CONTROL_PLAY {
+  display: inline-block;
+  margin: auto;
+  width: var(--minimalist-button-size);
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_MISC {
+  display: flex;
+  flex-direction:column;
+  justify-content: space-between;
+  margin-left: 0.5vw;
+  margin-right: 0.5vw;
+  overflow: hidden;
+}
+
+#SPOTIFY_MISC.control  {
+  width:calc(
+    var(--minimalist-width) -
+    var(--minimalist-cover-size) -
+    var(--minimalist-button-size)
+  );
+}
+
+#SPOTIFY_MISC.nocontrol {
+  width:calc(
+    var(--minimalist-width) -
+    var(--minimalist-cover-size)
+  );
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_INFO {
+  display: flex;
+  flex-direction:row;
+  justify-content: flex-start;
+  align-items: center;
+  width: inherit;
+  height: 70%;
+}
+
+#SPOTIFY.minimalistBar.Scroll #SPOTIFY_INFO {
+  justify-content: flex-start;
+  align-items: center;
+  width: inherit;
+  height: 70%;
+}
+
+#SPOTIFY.minimalistBar.noScroll #SPOTIFY_INFO {
+  justify-content: center;
+  align-items: center;
+  width: initial;
+}
+
+.marquee {
+  display: inline-block;
+  padding-left: 100%;
+  will-change: transform;
+  animation: marquee 60s linear infinite;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(-100%, 0);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+#SPOTIFY.minimalistBar.pausing .marquee {
+  animation-play-state: paused;
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_TITLE {
+  font-weight: bold;
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_ALBUM {
+  color: grey;
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_INFO_FOOTER > #SPOTIFY_LOGO {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%);
+}
+
+#SPOTIFY.minimalistBar #SPOTIFY_INFO_FOOTER {
+  display: flex;
+  flex-direction:row;
+  justify-content: space-between;
+  align-content: flex-end;
+}
+
+#SPOTIFY.minimalistBar #TEXT_BULLET {
+  margin-right: 0.5em;
+  white-space: nowrap;
+  display:inline-block;
+  color: grey;
+}
