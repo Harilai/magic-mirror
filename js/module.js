@@ -1,0 +1,552 @@
+import "../node_modules/nunjucks/browser/nunjucks.min.js";
+import { loadFileForModule } from "./loader.js";
+import { MMSocket } from "./socketclient.js";
+import { Translator } from "./translator.js";
+
+/*
+ * Module Blueprint.
+ * @typedef {Object} Module
+ */
+export class Module {
+
+	/**
+	 * Initializes per-instance mutable state.
+	 */
+	constructor () {
+		// Timer reference used for showHide animation callbacks.
+		this.showHideTimer = null;
+
+		/*
+		 * Array to store lockStrings. These strings are used to lock
+		 * visibility when hiding and showing module.
+		 */
+		this.lockStrings = [];
+
+		/*
+		 * Storage of the nunjucks Environment.
+		 * This should not be referenced directly.
+		 * Use the nunjucksEnvironment() method to get it.
+		 */
+		this._nunjucksEnvironment = null;
+	}
+
+	/**
+	 *********************************************************
+	 * All methods (and properties) below can be overridden. *
+	 *********************************************************
+	 */
+
+	/**
+	 * Called when the module is instantiated.
+	 */
+	init () {
+	}
+
+	/**
+	 * Called when the module is started.
+	 */
+	start () {
+		Log.info(`Starting module: ${this.name}`);
+	}
+
+	/**
+	 * Returns a list of scripts the module requires to be loaded.
+	 * @returns {string[]} An array with filenames.
+	 */
+	getScripts () {
+		return [];
+	}
+
+	/**
+	 * Returns a list of stylesheets the module requires to be loaded.
+	 * @returns {string[]} An array with filenames.
+	 */
+	getStyles () {
+		return [];
+	}
+
+	/**
+	 * Returns a map of translation files the module requires to be loaded.
+	 *
+	 * return Map<String, String> -
+	 * @returns {Map} A map with langKeys and filenames.
+	 */
+	getTranslations () {
+		return false;
+	}
+
+	/**
+	 * Generates the dom which needs to be displayed. This method is called by the MagicMirror² core.
+	 * This method can to be overridden if the module wants to display info on the mirror.
+	 * Alternatively, the getTemplate method could be overridden.
+	 * @returns {HTMLElement|Promise} The dom or a promise with the dom to display.
+	 */
+	getDom () {
+		return new Promise((resolve) => {
+			const div = document.createElement("div");
+			const template = this.getTemplate();
+			const templateData = this.getTemplateData();
+
+			// Check to see if we need to render a template string or a file.
+			if ((/^.*((\.html)|(\.njk))$/).test(template)) {
+				// the template is a filename
+				this.nunjucksEnvironment().render(template, templateData, (err, res) => {
+					if (err) {
+						Log.error(err);
+					}
+
+					div.innerHTML = res;
+
+					resolve(div);
+				});
+			} else {
+				// the template is a template string.
+				div.innerHTML = this.nunjucksEnvironment().renderString(template, templateData);
+
+				resolve(div);
+			}
+		});
+	}
+
+	/**
+	 * Generates the header string which needs to be displayed if a user has a header configured for this module.
+	 * This method is called by the MagicMirror² core, but only if the user has configured a default header for the module.
+	 * This method needs to be overridden if the module wants to display modified headers on the mirror.
+	 * @returns {string} The header to display above the header.
+	 */
+	getHeader () {
+		return this.data.header;
+	}
+
+	/**
+	 * Returns the template for the module which is used by the default getDom implementation.
+	 * This method needs to be overridden if the module wants to use a template.
+	 * It can either return a template string, or a template filename.
+	 * If the string ends with '.html' it's considered a file from within the module's folder.
+	 * @returns {string} The template string of filename.
+	 */
+	getTemplate () {
+		return `<div class="normal">${this.name}</div><div class="small dimmed">${this.identifier}</div>`;
+	}
+
+	/**
+	 * Returns the data to be used in the template.
+	 * This method needs to be overridden if the module wants to use a custom data.
+	 * @returns {object} The data for the template
+	 */
+	getTemplateData () {
+		return {};
+	}
+
+	/**
+	 * Called by the MagicMirror² core when a notification arrives.
+	 * @param {string} notification The identifier of the notification.
+	 * @param {object} payload The payload of the notification.
+	 * @param {Module} sender The module that sent the notification.
+	 */
+	notificationReceived (notification, payload, sender) {
+		if (sender) {
+			Log.debug(`${this.name} received a module notification: ${notification} from sender: ${sender.name}`);
+		} else {
+			Log.debug(`${this.name} received a system notification: ${notification}`);
+		}
+	}
+
+	/**
+	 * Returns the nunjucks environment for the current module.
+	 * The environment is checked in the _nunjucksEnvironment instance variable.
+	 * @returns {object} The Nunjucks Environment
+	 */
+	nunjucksEnvironment () {
+		if (this._nunjucksEnvironment !== null) {
+			return this._nunjucksEnvironment;
+		}
+
+		const nunjucksEngine = globalThis.nunjucks;
+
+		this._nunjucksEnvironment = new nunjucksEngine.Environment(new nunjucksEngine.WebLoader(this.file(""), { async: true }), {
+			trimBlocks: true,
+			lstripBlocks: true
+		});
+
+		this._nunjucksEnvironment.addFilter("translate", (str, variables) => {
+			return nunjucksEngine.runtime.markSafe(this.translate(str, variables));
+		});
+
+		return this._nunjucksEnvironment;
+	}
+
+	/**
+	 * Called when a socket notification arrives.
+	 * @param {string} notification The identifier of the notification.
+	 * @param {object} payload The payload of the notification.
+	 */
+	socketNotificationReceived (notification, payload) {
+		Log.log(`${this.name} received a socket notification: ${notification} - Payload: ${payload}`);
+	}
+
+	/**
+	 * Called when the module is hidden.
+	 */
+	suspend () {
+		Log.log(`${this.name} is suspended.`);
+	}
+
+	/**
+	 * Called when the module is shown.
+	 */
+	resume () {
+		Log.log(`${this.name} is resumed.`);
+	}
+
+	/**
+	 ***********************************************
+	 * The methods below should not be overridden. *
+	 ***********************************************
+	 */
+
+	/**
+	 * Set the module data.
+	 * @param {object} data The module data
+	 */
+	setData (data) {
+		this.data = data;
+		this.name = data.name;
+		this.identifier = data.identifier;
+		this.hidden = false;
+		this.hasAnimateIn = false;
+		this.hasAnimateOut = false;
+
+		this.setConfig(data.config, data.configDeepMerge);
+	}
+
+	/**
+	 * Set the module config and combine it with the module defaults.
+	 * @param {object} config The combined module config.
+	 * @param {boolean} deep Merge module config in deep.
+	 */
+	setConfig (config, deep) {
+		this.config = deep ? configMerge({}, this.defaults, config) : Object.assign({}, this.defaults, config);
+	}
+
+	/**
+	 * Returns a socket object. If it doesn't exist, it's created.
+	 * It also registers the notification callback.
+	 * @returns {MMSocket} a socket object
+	 */
+	socket () {
+		if (typeof this._socket === "undefined") {
+			this._socket = new MMSocket(this.name);
+		}
+
+		this._socket.setNotificationCallback((notification, payload) => {
+			this.socketNotificationReceived(notification, payload);
+		});
+
+		return this._socket;
+	}
+
+	/**
+	 * Retrieve the path to a module file.
+	 * @param {string} file Filename
+	 * @returns {string} the file path
+	 */
+	file (file) {
+		return `${this.data.path}/${file}`.replace("//", "/");
+	}
+
+	/**
+	 * Load all required stylesheets by requesting the MM object to load the files.
+	 * @returns {Promise<void>}
+	 */
+	loadStyles () {
+		return this.loadDependencies("getStyles");
+	}
+
+	/**
+	 * Load all required scripts by requesting the MM object to load the files.
+	 * @returns {Promise<void>}
+	 */
+	loadScripts () {
+		return this.loadDependencies("getScripts");
+	}
+
+	/**
+	 * Helper method to load all dependencies.
+	 * @param {string} funcName Function name to call to get scripts or styles.
+	 * @returns {Promise<void>}
+	 */
+	async loadDependencies (funcName) {
+		let dependencies = this[funcName]();
+
+		const loadNextDependency = async () => {
+			if (dependencies.length > 0) {
+				const nextDependency = dependencies[0];
+				await loadFileForModule(nextDependency, this);
+				dependencies = dependencies.slice(1);
+				await loadNextDependency();
+			} else {
+				return Promise.resolve();
+			}
+		};
+
+		await loadNextDependency();
+	}
+
+	/**
+	 * Load all translations.
+	 * @returns {Promise<void>}
+	 */
+	async loadTranslations () {
+		const translations = this.getTranslations() || {};
+		const language = globalThis.config.language.toLowerCase();
+
+		const languages = Object.keys(translations);
+		const fallbackLanguage = languages[0];
+
+		if (languages.length === 0) {
+			return;
+		}
+
+		const translationFile = translations[language];
+		const translationsFallbackFile = translations[fallbackLanguage];
+
+		if (!translationFile) {
+			return Translator.load(this, translationsFallbackFile, true);
+		}
+
+		await Translator.load(this, translationFile, false);
+
+		if (translationFile !== translationsFallbackFile) {
+			return Translator.load(this, translationsFallbackFile, true);
+		}
+	}
+
+	/**
+	 * Request the translation for a given key with optional variables and default value.
+	 * @param {string} key The key of the string to translate
+	 * @param {string|object} [defaultValueOrVariables] The default value or variables for translating.
+	 * @param {string} [defaultValue] The default value with variables.
+	 * @returns {string} the translated key
+	 */
+	translate (key, defaultValueOrVariables, defaultValue) {
+		if (typeof defaultValueOrVariables === "object") {
+			return Translator.translate(this, key, defaultValueOrVariables) || defaultValue || "";
+		}
+		return Translator.translate(this, key) || defaultValueOrVariables || "";
+	}
+
+	/**
+	 * Request an (animated) update of the module.
+	 * @param {number|object} [updateOptions] The speed of the animation or object with for updateOptions (speed/animates)
+	 */
+	updateDom (updateOptions) {
+		MM.updateDom(this, updateOptions);
+	}
+
+	/**
+	 * Send a notification to all modules.
+	 * @param {string} notification The identifier of the notification.
+	 * @param {object} payload The payload of the notification.
+	 */
+	sendNotification (notification, payload) {
+		MM.sendNotification(notification, payload, this);
+	}
+
+	/**
+	 * Send a socket notification to the node helper.
+	 * @param {string} notification The identifier of the notification.
+	 * @param {object} payload The payload of the notification.
+	 */
+	sendSocketNotification (notification, payload) {
+		this.socket().sendNotification(notification, payload);
+	}
+
+	/**
+	 * Hide this module.
+	 * @param {number} speed The speed of the hide animation.
+	 * @param {() => void} callback Called when the animation is done.
+	 * @param {object} [options] Optional settings for the hide method.
+	 */
+	hide (speed, callback, options = {}) {
+		let usedCallback = callback || (() => {});
+		let usedOptions = options;
+
+		if (typeof callback === "object") {
+			Log.error("Parameter mismatch in module.hide: callback is not an optional parameter!");
+			usedOptions = callback;
+			usedCallback = () => {};
+		}
+
+		MM.hideModule(
+			this,
+			speed,
+			() => {
+				this.suspend();
+				usedCallback();
+			},
+			usedOptions
+		);
+	}
+
+	/**
+	 * Show this module.
+	 * @param {number} speed The speed of the show animation.
+	 * @param {() => void} callback Called when the animation is done.
+	 * @param {object} [options] Optional settings for the show method.
+	 */
+	show (speed, callback, options) {
+		let usedCallback = callback || (() => {});
+		let usedOptions = options;
+
+		if (typeof callback === "object") {
+			Log.error("Parameter mismatch in module.show: callback is not an optional parameter!");
+			usedOptions = callback;
+			usedCallback = () => {};
+		}
+
+		MM.showModule(
+			this,
+			speed,
+			() => {
+				this.resume();
+				usedCallback();
+			},
+			usedOptions
+		);
+	}
+}
+
+globalThis.Module = Module;
+
+/**
+ * Deep-merge module defaults with the user config.
+ * Used by Module.setConfig when configDeepMerge is enabled.
+ * Nested plain objects are merged recursively.
+ * All other values (strings, numbers, arrays, …) are overwritten.
+ * Sources are applied left to right; later values win.
+ * @param {object} target The object to merge into (mutated and returned).
+ * @param {...object} sources Objects whose properties are merged into target.
+ * @returns {object} The merged target object.
+ */
+const configMerge = (target, ...sources) => {
+	const isPlainObject = (value) => value?.constructor === Object;
+
+	for (const source of sources) {
+		for (const [key, sourceValue] of Object.entries(source ?? {})) {
+			const targetValue = target[key];
+			const canDeepMerge = isPlainObject(targetValue) && isPlainObject(sourceValue);
+
+			// Recurse into a fresh object so the shared defaults stay untouched; otherwise overwrite.
+			target[key] = canDeepMerge
+				? configMerge({}, targetValue, sourceValue)
+				: sourceValue;
+		}
+	}
+
+	return target;
+};
+
+Module.definitions = {};
+
+Module.create = function (name) {
+	// Make sure module definition is available.
+	if (!Module.definitions[name]) {
+		return;
+	}
+
+	const moduleDefinition = Module.definitions[name];
+	const clonedDefinition = cloneObject(moduleDefinition);
+	const className = typeof name === "string" && name.trim() ? name : "AnonymousModule";
+
+	// Note that we clone the definition. Otherwise the objects are shared, which gives problems.
+	const SubClass = {
+		[className]: class extends Module {
+			constructor () {
+				super();
+				Object.assign(this, clonedDefinition);
+				if (typeof this.init === "function") {
+					this.init();
+				}
+			}
+		}
+	}[className];
+
+	return new SubClass();
+};
+
+Module.register = function (name, moduleDefinition) {
+	if (moduleDefinition.requiresVersion) {
+		Log.log(`Check MagicMirror² version for module '${name}' - Minimum version:  ${moduleDefinition.requiresVersion} - Current version: ${window.mmVersion}`);
+		if (cmpVersions(window.mmVersion, moduleDefinition.requiresVersion) >= 0) {
+			Log.log("Version is ok!");
+		} else {
+			Log.warn(`Version is incorrect. Skip module: '${name}'`);
+			return;
+		}
+	}
+	Log.log(`Module registered: ${name}`);
+	Module.definitions[name] = moduleDefinition;
+};
+
+/**
+ * Compare two semantic version numbers and return the difference.
+ * @param {string} a Version number a.
+ * @param {string} b Version number b.
+ * @returns {number} A positive number if a is larger than b, a negative
+ * number if a is smaller and 0 if they are the same
+ */
+export const cmpVersions = (a, b) => {
+	const regExStrip0 = /(\.0+)+$/;
+	const segmentsA = a.replace(regExStrip0, "").split(".");
+	const segmentsB = b.replace(regExStrip0, "").split(".");
+	const l = Math.min(segmentsA.length, segmentsB.length);
+
+	for (let i = 0; i < l; i++) {
+		const diff = parseInt(segmentsA[i], 10) - parseInt(segmentsB[i], 10);
+		if (diff) {
+			return diff;
+		}
+	}
+	return segmentsA.length - segmentsB.length;
+};
+
+/**
+ * Define the clone method for later use. Helper Method.
+ * @param {object} obj Object to be cloned
+ * @returns {object} the cloned object
+ */
+export const cloneObject = (obj) => {
+	if (obj === null || typeof obj !== "object") {
+		return obj;
+	}
+
+	if (Array.isArray(obj)) {
+		return obj.map((item) => cloneObject(item));
+	}
+
+	const tag = Object.prototype.toString.call(obj);
+
+	if (tag === "[object RegExp]") {
+		return new RegExp(obj);
+	}
+
+	if (tag === "[object Date]") {
+		return new Date(obj.getTime());
+	}
+
+	const proto = Object.getPrototypeOf(obj);
+	const isPlainObject = proto === null || Object.getPrototypeOf(proto) === null;
+
+	// Avoid calling class constructors without "new". Preserve unknown objects by reference.
+	if (!isPlainObject) {
+		return obj;
+	}
+
+	const temp = {};
+	for (const key of Object.keys(obj)) {
+		temp[key] = cloneObject(obj[key]);
+	}
+
+	return temp;
+};
