@@ -59,6 +59,15 @@ const config = {
 			}
 		},
 		{
+			module: "MMM-Spotify",
+			position: "bottom_right",
+			config: {
+				debug: true,
+				style: "mini",
+				showVolumeLabel: false
+			}
+		},
+		{
 			module: "alert",
 		},
 		{

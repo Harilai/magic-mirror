@@ -37,6 +37,9 @@
 ## - Today Events -
     He creado un nuevo modulo llamado MMM-TodayEvents el cual hace que saque un mensaje de las tareas del calendario asignadas ese dia. Ej: Si en el calendario tienes puesto que el 20 de agosto es el cumple de alguien, ese dia te saldra un mensaje en pantalla recordandolo
 
+## - Spotify -
+    He añadido el modulo MMM-Spotify el cual permite ver el ui de spotify cuando se esta reproduciendo musica. Solo es el ui y hace falta instalar raspotify y añadir altavoces para que el espejo pueda repoducir musica. La cuenta debe ser premium ya que nos tenemos que meter a "https://developer.spotify.com/dashboard/" crear una app, despues añadir a url "http://127.0.0.1:8888/callback" y seleccionar "Web API", por ultimo deberemos crear un archivo .conf como el que trae el modulo como ejemplo.
+
 
 
 # - Posibles Implementaciones -
