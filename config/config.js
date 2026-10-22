@@ -95,13 +95,14 @@ const config = {
 					{
 						fetchInterval: 7 * 24 * 60 * 60 * 1000,
 						symbol: "calendar-check",
-						url: "https://calendar.google.com/calendar/ical/danitejeroperedo13%40gmail.com/public/basic.ics"
+						url: "https://calendar.google.com/calendar/ical/danitejeroperedo13%40gmail.com/public/basic.ics",
+						maximumNumberOfDays: 30
 					},
 					{
 						fetchInterval: 7 * 24 * 60 * 60 * 1000,
 						symbol: "calendar-check",
 						url: "http://localhost:8080/defaultmodules/calendar/ics/cumpleanos.ics",
-						repeatingCountTitle: " años"
+						repeatingCountTitle: " años",
 					}
 				]
 			}
