@@ -1,0 +1,113 @@
+{
+	"name": "mmm-remote-control",
+	"version": "6.1.0",
+	"description": "This module for the MagicMirror² allows you to shutdown and configure your mirror through a web browser.",
+	"keywords": [
+		"magic mirror",
+		"smart mirror",
+		"module",
+		"remote control",
+		"control"
+	],
+	"homepage": "https://github.com/jopyth/MMM-Remote-Control#readme",
+	"bugs": {
+		"url": "https://github.com/jopyth/MMM-Remote-Control/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/jopyth/MMM-Remote-Control"
+	},
+	"license": "MIT",
+	"author": "Joseph Bethge",
+	"contributors": [
+		{
+			"name": "Contributors",
+			"url": "https://github.com/jopyth/MMM-Remote-Control/graphs/contributors"
+		}
+	],
+	"type": "commonjs",
+	"scripts": {
+		"demo": "cd ../../ && MM_CONFIG_FILE=modules/MMM-Remote-Control/demo.config.js node --run start:dev",
+		"download_modules": "node ./scripts/download_modules_manually.mjs",
+		"generate-apikey": "node -p 'require(\"node:crypto\").randomUUID()'",
+		"lint": "eslint && prettier . --check",
+		"lint:fix": "eslint --fix && prettier . --write",
+		"prepare": "simple-git-hooks || echo 'No problem. Skipping git hooks installation.'",
+		"postinstall": "node scripts/postinstall.js",
+		"release": "commit-and-tag-version -a --config ./changelog.config.js",
+		"test": "node --run lint && node --run test:spelling && node --test tests/**/*.test.js",
+		"test:coverage": "c8 --all node --test tests/unit/**/*.test.js tests/integration/**/*.test.js",
+		"test:dom": "node --test tests/dom/**/*.test.js",
+		"test:integration": "node --test tests/integration/**/*.test.js",
+		"test:spelling": "cspell .",
+		"test:unit": "node --test tests/unit/**/*.test.js"
+	},
+	"dependencies": {
+		"acorn": "^8.19.0",
+		"dompurify": "^3.4.17",
+		"marked": "^18.1.1",
+		"qrcode": "^1.5.4",
+		"simple-git": "^4.0.2",
+		"swagger-ui-dist": "^5.34.0"
+	},
+	"devDependencies": {
+		"@eslint/css": "^2.0.1",
+		"@eslint/js": "^10.0.1",
+		"@eslint/json": "^2.1.1",
+		"@eslint/markdown": "^7.5.1",
+		"@stylistic/eslint-plugin": "^5.10.0",
+		"c8": "^12.0.0",
+		"commit-and-tag-version": "^13.3.0",
+		"cspell": "^10.4.0",
+		"eslint": "^10.13.0",
+		"eslint-plugin-import-x": "^4.17.1",
+		"eslint-plugin-jsdoc": "^65.3.15",
+		"eslint-plugin-unicorn": "^78.0.0",
+		"express": "^5.3.0",
+		"globals": "^17.13.0",
+		"happy-dom": "^21.0.3",
+		"lint-staged": "^17.6.0",
+		"prettier": "^3.9.10",
+		"simple-git-hooks": "^2.14.0"
+	},
+	"simple-git-hooks": {
+		"pre-commit": "npx lint-staged"
+	},
+	"lint-staged": {
+		"*": [
+			"eslint --fix",
+			"prettier --write --ignore-unknown"
+		]
+	},
+	"c8": {
+		"reporter": [
+			"text-summary",
+			"lcov"
+		],
+		"include": [
+			"lib/**/*.js",
+			"API/**/*.js",
+			"node_helper.js",
+			"MMM-Remote-Control.js"
+		],
+		"exclude": [
+			"tests/**",
+			"translations/**",
+			"docs/**",
+			"img/**",
+			"remote.html",
+			"remote/remote.css",
+			"**/*.md"
+		],
+		"check-coverage": true,
+		"branches": 75,
+		"lines": 45,
+		"functions": 50,
+		"statements": 45
+	},
+	"allowScripts": {
+		"@scarf/scarf@1.4.0": true,
+		"simple-git-hooks@2.14.0": true,
+		"unrs-resolver@1.12.2": true
+	}
+}

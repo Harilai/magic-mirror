@@ -1,0 +1,1187 @@
+import { Remote } from './remote.mjs'
+
+/**
+ * Config editor methods for MMM-Remote-Control.
+ * Covers the module configuration popup, GUI builders, saving and restoring.
+ */
+Object.assign(
+  Remote,
+  {
+
+    recreateConfigElement(key, previousType, newType) {
+      const input = document.getElementById(key)
+      const oldGUI = previousType === 'array' || previousType === 'object'
+        ? input
+        : input.parentNode
+      const path = key.split('/'),
+        name = path.at(-1)
+
+      let current = this.currentConfig
+      for (let index = 1; index < path.length - 1; index++) {
+        current = current[path[index]]
+      }
+      const initialValue = this.values[this.types.indexOf(newType)],
+        newGUI = this.createObjectGUI(
+          key,
+          name,
+          initialValue,
+        )
+      oldGUI.replaceWith(newGUI)
+    },
+
+    createTypeEditSelection(key, parent, type, oldElement) {
+      const previousType = type.toLowerCase(),
+        select = document.createElement('select')
+      for (const typeOption of this.types) {
+        const option = document.createElement('option')
+        option.textContent = typeOption
+        option.value = typeOption
+        if (typeOption === type) {
+          option.selected = true
+        }
+        select.append(option)
+      }
+      select.addEventListener(
+        'change',
+        () => {
+          const newType = select.options[select.selectedIndex].getHTML().toLowerCase()
+          if (previousType === newType) {
+            select.replaceWith(oldElement)
+          }
+          else {
+            this.recreateConfigElement(
+              key,
+              previousType,
+              newType,
+            )
+          }
+        },
+        { capture: false },
+      )
+      select.addEventListener(
+        'blur',
+        () => {
+          select.replaceWith(oldElement)
+        },
+        { capture: false },
+      )
+      return select
+    },
+
+    createConfigLabel(key, name, type, forcedType, symbol = 'fa-tag', schema) {
+      if (name.at(0) === '#') {
+        symbol = 'fa-hashtag'
+        name = name.slice(1)
+      }
+      const label = document.createElement('div')
+      label.className = 'config-label'
+      const info = document.createElement('div')
+      info.className = 'config-label-info'
+      const desc = document.createElement('label')
+      desc.htmlFor = key
+      desc.className = 'label-name'
+      const icon = document.createElement('span')
+      icon.className = `fa fa-fw ${symbol}`
+      const labelText = document.createElement('span')
+      labelText.className = 'symbol-text-padding'
+      labelText.textContent = name
+      desc.append(icon, labelText)
+      info.append(desc)
+      if (schema?.description) {
+        const description = document.createElement('small')
+        description.className = 'config-description'
+        description.textContent = schema.description
+        info.append(description)
+      }
+      label.append(info)
+
+      if (!forcedType) {
+        const actions = document.createElement('div')
+        actions.className = 'config-label-actions'
+        const typeLabel = Remote.createSymbolText(
+          'fa fa-fw fa-pencil',
+          type,
+          (event) => {
+            const thisElement = event.currentTarget
+            thisElement.replaceWith(
+              this.createTypeEditSelection(
+                key,
+                label,
+                type,
+                thisElement,
+              ),
+              thisElement,
+            )
+          },
+          'span',
+        )
+        typeLabel.classList.add('module-remove')
+        actions.append(typeLabel)
+
+        const remove = Remote.createSymbolText(
+          'fa fa-fw fa-times-circle',
+          this.translate('REMOVE'),
+          (event) => {
+            const thisElement = event.currentTarget
+            let elementToRemove = thisElement.parentNode
+            if (type === 'array' || type === 'object') {
+              elementToRemove = elementToRemove.parentNode
+            }
+            elementToRemove.remove()
+          },
+          'span',
+        )
+        remove.classList.add('module-remove')
+        actions.append(remove)
+        label.append(actions)
+      }
+      return label
+    },
+
+    appendConfigControl(label, control) {
+      let container = label.querySelector(':scope > .config-label-control')
+      if (!container) {
+        container = document.createElement('div')
+        container.className = 'config-label-control'
+        label.append(container)
+      }
+      container.append(control)
+      return container
+    },
+
+    createConfigInput(key, value, omitValue, element = 'input') {
+      const input = document.createElement(element)
+      input.className = 'config-input'
+      if (!omitValue) {
+        input.value = value
+      }
+      input.id = key
+      return input
+    },
+
+    createSchemaEnumInput(key, value, schema) {
+      const enumValues = schema?.enum
+      if (!Array.isArray(enumValues) || enumValues.some(item => item !== null && !['string', 'number', 'boolean'].includes(typeof item))) {
+        return null
+      }
+
+      const values = enumValues.some(item => Object.is(item, value))
+        ? enumValues
+        : [value, ...enumValues]
+      const select = this.createConfigInput(key, '', false, 'select')
+      select.dataset.schemaEnum = 'true'
+      for (const [index, enumValue] of values.entries()) {
+        const option = document.createElement('option')
+        option.value = String(index)
+        option.textContent = String(enumValue)
+        option.dataset.configValue = JSON.stringify(enumValue)
+        option.selected = Object.is(enumValue, value)
+        select.append(option)
+      }
+      return select
+    },
+
+    createVisualCheckbox(key, wrapper, input, className) {
+      const visualCheckbox = document.createElement('span')
+      visualCheckbox.className = `visual-checkbox fa fa-fw ${className}`
+      wrapper.append(visualCheckbox)
+    },
+
+    createConfigElement(type) {
+      const makeDisabledInput = typeName => (key, name, value, type, forcedType, schema) => {
+        const label = this.createConfigLabel(
+            key,
+            name,
+            type,
+            forcedType,
+            'fa-tag',
+            schema,
+          ),
+          input = this.createConfigInput(
+            key,
+            value,
+          )
+        input.type = 'text'
+        input.disabled = 'disabled'
+        input.classList.add(
+          'disabled',
+          typeName,
+        )
+        input.placeholder = typeName
+        this.appendConfigControl(label, input)
+        return label
+      }
+      return {
+        string: (key, name, value, type, forcedType, schema) => {
+          const label = this.createConfigLabel(
+              key,
+              name,
+              type,
+              forcedType,
+              'fa-tag',
+              schema,
+            ),
+            input = this.createSchemaEnumInput(key, value, schema) ?? this.createConfigInput(key, value)
+          if (input.tagName.toLowerCase() === 'input') input.type = 'text'
+          this.appendConfigControl(label, input)
+          if (key === '<root>/header' && input.tagName.toLowerCase() === 'input') {
+            input.placeholder = this.translate('NO_HEADER')
+          }
+          return label
+        },
+        number: (key, name, value, type, forcedType, schema) => {
+          const label = this.createConfigLabel(
+              key,
+              name,
+              type,
+              forcedType,
+              'fa-tag',
+              schema,
+            ),
+            input = this.createSchemaEnumInput(key, value, schema) ?? this.createConfigInput(key, value)
+          if (input.tagName.toLowerCase() === 'input') input.type = 'number'
+          if (input.tagName.toLowerCase() === 'input' && value % 1 !== 0) {
+            input.step = 0.01
+          }
+          this.appendConfigControl(label, input)
+          return label
+        },
+        boolean: (key, name, value, type, forcedType, schema) => {
+          const label = this.createConfigLabel(
+              key,
+              name,
+              type,
+              forcedType,
+              'fa-tag',
+              schema,
+            ),
+            input = this.createSchemaEnumInput(key, value, schema) ?? this.createConfigInput(key, value, true)
+          if (input.tagName.toLowerCase() === 'input') input.type = 'checkbox'
+          const control = this.appendConfigControl(label, input)
+          if (input.type === 'checkbox') {
+            if (value) {
+              input.checked = true
+            }
+
+            this.createVisualCheckbox(
+              key,
+              control,
+              input,
+              'fa-check-square-o',
+              false,
+            )
+            this.createVisualCheckbox(
+              key,
+              control,
+              input,
+              'fa-square-o',
+              true,
+            )
+          }
+          return label
+        },
+        undefined: makeDisabledInput('undefined'),
+        null: makeDisabledInput('null'),
+        position: (key, name, value, type, forcedType) => {
+          const label = this.createConfigLabel(
+              key,
+              name,
+              type,
+              forcedType,
+            ),
+            select = this.createConfigInput(
+              key,
+              value,
+              false,
+              'select',
+            )
+          select.className = 'config-input'
+          select.id = key
+          for (const position of this.validPositions) {
+            const option = document.createElement('option')
+            option.value = position
+            option.textContent = position
+              ? this.formatPosition(position)
+              : this.translate('NO_POSITION')
+            if (position === value) {
+              option.selected = true
+            }
+            select.append(option)
+          }
+          this.appendConfigControl(label, select)
+          return label
+        },
+      }[type]
+    },
+
+    getTypeAsString(dataToEdit, path) {
+      const schemaType = this.getConfigSchemaAtPath(path)?.type
+      if (schemaType) {
+        const types = Array.isArray(schemaType) ? schemaType : [schemaType]
+        let dataType = typeof dataToEdit
+        if (Array.isArray(dataToEdit)) dataType = 'array'
+        else if (dataToEdit === null) dataType = 'null'
+        const selectedType = types.includes(dataType)
+          ? dataType
+          : types.find(type => type !== 'null')
+        const normalizedType = selectedType === 'integer' ? 'number' : selectedType
+        if (this.createConfigElement(normalizedType)) return normalizedType
+      }
+      let type = typeof dataToEdit
+      type = path === '<root>/position'
+        ? 'position'
+        : type
+      if (this.createConfigElement(type)) {
+        return type
+      }
+      if (Array.isArray(dataToEdit)) {
+        return 'array'
+      }
+      if (dataToEdit === null) {
+        return 'null'
+      }
+      return dataToEdit === undefined ? 'undefined' : 'object'
+    },
+
+    getConfigSchemaAtPath(path) {
+      let schema = this.currentConfigSchema
+      const segments = path.split('/'),
+        configIndex = segments.indexOf('config')
+      if (!schema || configIndex === -1) return
+
+      const propertySegments = segments.slice(configIndex + 1)
+      for (const segment of propertySegments) {
+        schema = segment.startsWith('#')
+          ? schema?.items
+          : schema?.properties?.[segment]
+      }
+      return schema
+    },
+
+    getConfigDefaultsAtPath(path) {
+      let defaults = this.currentConfigDefaults
+      const segments = path.split('/'),
+        configIndex = segments.indexOf('config')
+      if (!defaults || configIndex === -1) return
+
+      const propertySegments = segments.slice(configIndex + 1)
+      for (const segment of propertySegments) {
+        defaults = segment.startsWith('#')
+          ? defaults?.[Number.parseInt(segment.slice(1))]
+          : defaults?.[segment]
+      }
+      return defaults
+    },
+
+    getSuggestedConfigKeys(path, currentValue) {
+      const defaults = this.getConfigDefaultsAtPath(path),
+        properties = this.getConfigSchemaAtPath(path)?.properties ?? {}
+      return [...new Set([
+        ...Object.keys(defaults ?? {}),
+        ...Object.keys(properties),
+      ])].filter(key => !Object.hasOwn(currentValue, key))
+    },
+
+    getNewArrayItemValue(path, index, currentItems, fallbackType) {
+      const defaults = this.getConfigDefaultsAtPath(path)
+      if (Array.isArray(defaults) && defaults.length > 0) {
+        return structuredClone(defaults[Math.min(index, defaults.length - 1)])
+      }
+
+      const schema = this.getConfigSchemaAtPath(`${path}/#${index}`)
+      if (schema && Object.hasOwn(schema, 'default')) return structuredClone(schema.default)
+      if (Array.isArray(schema?.enum) && schema.enum.length > 0) return structuredClone(schema.enum[0])
+
+      let type = schema?.type
+      if (Array.isArray(type)) type = type.find(candidate => candidate !== 'null')
+      const schemaDefaults = {
+        string: '',
+        number: 0,
+        integer: 0,
+        boolean: false,
+        array: [],
+        object: {},
+        null: null,
+      }
+      if (Object.hasOwn(schemaDefaults, type)) return structuredClone(schemaDefaults[type])
+      if (currentItems.length > 0) return structuredClone(currentItems.at(-1))
+
+      const typeIndex = this.types.indexOf(fallbackType)
+      return typeIndex === -1 ? '' : structuredClone(this.values[typeIndex])
+    },
+
+    getNewConfigValue(path, key, fallbackType) {
+      const defaults = this.getConfigDefaultsAtPath(path),
+        schema = this.getConfigSchemaAtPath(`${path}/${key}`)
+      if (defaults && Object.hasOwn(defaults, key)) return structuredClone(defaults[key])
+      if (schema && Object.hasOwn(schema, 'default')) return structuredClone(schema.default)
+      if (Array.isArray(schema?.enum) && schema.enum.length > 0) return structuredClone(schema.enum[0])
+
+      let type = schema?.type
+      if (Array.isArray(type)) type = type.find(candidate => candidate !== 'null')
+      const schemaDefaults = {
+        string: '',
+        number: 0,
+        integer: 0,
+        boolean: false,
+        array: [],
+        object: {},
+        null: null,
+      }
+      if (Object.hasOwn(schemaDefaults, type)) return structuredClone(schemaDefaults[type])
+
+      const typeIndex = this.types.indexOf(fallbackType)
+      return typeIndex === -1 ? '' : structuredClone(this.values[typeIndex])
+    },
+
+    createObjectAddElement(path, dataToEdit, type) {
+      const addElement = this.createConfigLabel(
+        `${path}/<add>`,
+        this.translate('ADD_ENTRY'),
+        type,
+        true,
+        'fa-plus',
+      )
+      addElement.classList.add('bottom-spacing')
+      const inputWrapper = document.createElement('div')
+      inputWrapper.className = 'add-input-wrapper'
+      const select = document.createElement('select')
+      select.id = `${path}/<add>`
+      select.className = 'config-add-select'
+      select.setAttribute('aria-label', this.translate('ADD_ENTRY'))
+      const placeholder = document.createElement('option')
+      placeholder.value = ''
+      placeholder.textContent = this.translate('ADD_ENTRY')
+      placeholder.disabled = true
+      placeholder.selected = true
+      select.append(placeholder)
+      for (const [index, key] of this.getSuggestedConfigKeys(path, dataToEdit).entries()) {
+        const option = document.createElement('option')
+        option.value = `suggestion-${index}`
+        option.dataset.key = key
+        option.textContent = key
+        select.append(option)
+      }
+      const customOption = document.createElement('option')
+      customOption.value = 'custom-property'
+      customOption.textContent = this.translate('NEW_ENTRY_NAME')
+      select.append(customOption)
+      const input = document.createElement('input')
+      input.id = `${path}/<custom>`
+      input.className = 'config-add-custom'
+      input.type = 'text'
+      input.placeholder = this.translate('NEW_ENTRY_NAME')
+      input.hidden = true
+      input.setAttribute('aria-label', this.translate('NEW_ENTRY_NAME'))
+      select.addEventListener('change', () => {
+        const isCustom = select.value === customOption.value
+        input.hidden = !isCustom
+        input.classList.remove('input-error')
+        select.classList.remove('input-error')
+        if (isCustom) input.focus()
+      })
+      addElement.append(inputWrapper)
+      inputWrapper.append(select, input)
+      const addFunction = () => {
+          const existingKey = Object.keys(dataToEdit)[0],
+            lastType = existingKey === undefined
+              ? 'string'
+              : this.getTypeAsString(dataToEdit[existingKey], `${path}/${existingKey}`),
+            selectedOption = select.selectedOptions[0],
+            isCustom = select.value === customOption.value,
+            key = isCustom ? input.value.trim() : selectedOption?.dataset.key
+
+          if (!key || document.getElementById(`${path}/${key}`)) {
+            const invalidInput = isCustom ? input : select
+            invalidInput.classList.add('input-error')
+            return
+          }
+
+          input.classList.remove('input-error')
+          select.classList.remove('input-error')
+          dataToEdit[key] = this.getNewConfigValue(path, key, lastType)
+          const newElement = this.createObjectGUI(
+            `${path}/${key}`,
+            key,
+            dataToEdit[key],
+          )
+          addElement.after(newElement)
+          input.value = ''
+          input.hidden = true
+          select.value = ''
+          if (!isCustom) selectedOption.remove()
+        },
+        symbol = document.createElement('span')
+      symbol.className = 'fa fa-fw fa-plus-square button'
+      symbol.addEventListener(
+        'click',
+        addFunction,
+        { capture: false },
+      )
+      inputWrapper.append(symbol)
+      input.addEventListener(
+        'keydown',
+        (event) => {
+          if (event.key !== 'Enter') return
+          event.preventDefault()
+          addFunction()
+        },
+      )
+      select.addEventListener(
+        'keydown',
+        (event) => {
+          if (event.key !== 'Enter' || !select.value) return
+          event.preventDefault()
+          addFunction()
+        },
+      )
+      return addElement
+    },
+
+    hasForcedType(path) {
+      return (path.match(/\//g) || []).length === 1
+    },
+
+    createObjectGUI(path, name, dataToEdit) {
+      const schema = this.getConfigSchemaAtPath(path)
+      const type = this.getTypeAsString(
+          dataToEdit,
+          path,
+        ),
+        forcedType = this.hasForcedType(path),
+        leafElement = this.createConfigElement(type)
+      if (leafElement) {
+        // Recursion stop
+        return leafElement(
+          path,
+          name,
+          dataToEdit,
+          type,
+          forcedType,
+          schema,
+        )
+      }
+
+      // Object and array
+      const wrapper = document.createElement('div')
+      wrapper.id = path
+      wrapper.className = `indent config-input ${type}`
+      if (type === 'array') {
+        // Array
+        const add = this.createSymbolText(
+          'fa fa-fw fa-plus',
+          this.translate('ADD_ENTRY'),
+        )
+        add.classList.add(
+          'bottom-spacing',
+          'button',
+        )
+        wrapper.append(this.createConfigLabel(
+          path,
+          name,
+          type,
+          forcedType,
+          'fa-list-ol',
+        ))
+        wrapper.append(add)
+        for (const [index, item] of dataToEdit.entries()) {
+          const newName = `#${index}`
+          wrapper.append(this.createObjectGUI(
+            `${path}/${newName}`,
+            newName,
+            item,
+          ))
+        }
+        add.addEventListener(
+          'click',
+          () => {
+            const nextIndex = dataToEdit.length,
+              lastIndex = nextIndex - 1,
+              lastType = lastIndex >= 0
+                ? this.getTypeAsString(dataToEdit[lastIndex], `${path}/#${lastIndex}`)
+                : 'string',
+              newValue = this.getNewArrayItemValue(path, nextIndex, dataToEdit, lastType)
+            dataToEdit.push(newValue)
+            const nextName = `#${nextIndex}`
+            wrapper.append(this.createObjectGUI(
+              `${path}/${nextName}`,
+              nextName,
+              newValue,
+            ))
+          },
+          { capture: false },
+        )
+        return wrapper
+      }
+
+      // Object
+      if (path !== '<root>') {
+        wrapper.append(this.createConfigLabel(
+          path,
+          name,
+          type,
+          forcedType,
+          'fa-list-ul',
+          schema,
+        ))
+        wrapper.append(this.createObjectAddElement(path, dataToEdit, type))
+      }
+      let keys = Object.keys(dataToEdit)
+      if (path === '<root>') {
+        keys = [
+          'module',
+          'disabled',
+          'position',
+          'header',
+          'config',
+        ]
+      }
+      for (const key of keys) {
+        if (Object.hasOwn(
+          dataToEdit,
+          key,
+        )) {
+          wrapper.append(this.createObjectGUI(
+            `${path}/${key}`,
+            key,
+            dataToEdit[key],
+          ))
+        }
+      }
+      if (path === '<root>') {
+        // Additional css classes on root element
+        wrapper.className = 'flex-fill small'
+      }
+      return wrapper
+    },
+
+    appendConfigMenu(index, wrapper) {
+      const menuDiv = document.createElement('div')
+      menuDiv.className = 'fixed-size sub-menu'
+
+      const help = this.createSymbolText(
+        'fa fa-fw fa-question-circle',
+        this.translate('HELP'),
+        () => {
+          window.open(
+            `config-help.html?module=${this.currentConfig.module}`,
+            '_blank',
+          )
+        },
+      )
+      menuDiv.append(help)
+      const undo = this.createSymbolText(
+        'fa fa-fw fa-undo',
+        this.translate('RESET'),
+        () => {
+          this.createConfigPopup(index)
+        },
+      )
+      menuDiv.append(undo)
+      const save = this.createSymbolText(
+        'fa fa-fw fa-save',
+        this.translate('SAVE'),
+        () => {
+          this.savedData.config.modules[index] = this.getModuleConfigFromUI()
+          this.changedModules.push(index)
+          const parent = document.getElementById(`edit-module-${index}`).parentNode
+          if (parent.childElementCount === 2) {
+            const secondChild = parent.firstElementChild?.nextElementSibling
+
+            parent.insertBefore(
+              this.createChangedWarning(),
+              secondChild,
+            )
+          }
+          this.closePopup()
+        },
+      )
+      menuDiv.append(save)
+
+      wrapper.append(menuDiv)
+    },
+
+    setValue(parent, name, value) {
+      if (name.includes('#')) {
+        parent.push(value)
+      }
+      else {
+        parent[name] = value
+      }
+    },
+
+    navigate(parent, name) {
+      return name.includes('#') ? parent.at(-1) : parent[name]
+    },
+
+    getModuleConfigFromUI() {
+      const rootElement = {},
+        elements = [...document.querySelectorAll('.config-input')]
+      for (const element of elements) {
+        const path = element.id,
+          splitPath = path.split('/')
+        let parent = rootElement
+        for (let k = 1; k < splitPath.length - 1; k++) {
+          parent = this.navigate(
+            parent,
+            splitPath[k],
+          )
+        }
+        const name = splitPath.at(-1)
+        if (element.classList.contains('null')) {
+          this.setValue(
+            parent,
+            name,
+            null,
+          )
+          continue
+        }
+        if (element.classList.contains('undefined')) {
+          this.setValue(
+            parent,
+            name,
+            undefined,
+          )
+          continue
+        }
+        if (element.classList.contains('array')) {
+          this.setValue(
+            parent,
+            name,
+            [],
+          )
+          continue
+        }
+        if (element.classList.contains('object')) {
+          this.setValue(
+            parent,
+            name,
+            {},
+          )
+          continue
+        }
+
+        let { value } = element
+        if (name === '<add>' || (path === '<root>/position' && value === '')) {
+          continue
+        }
+        if (element.type === 'checkbox') {
+          value = element.checked
+        }
+        else if (element.dataset.schemaEnum === 'true') {
+          value = JSON.parse(element.selectedOptions[0].dataset.configValue)
+        }
+        else if (element.type === 'number') {
+          value = Number(value)
+        }
+        this.setValue(
+          parent,
+          name,
+          value,
+        )
+      }
+      return rootElement
+    },
+
+    cacheModuleConfigMetadata(moduleName, payload) {
+      if (!this.moduleConfigMetadata) this.moduleConfigMetadata = new Map()
+      const metadata = {
+        defaults: payload?.data && typeof payload.data === 'object' ? payload.data : {},
+        schema: payload?.schema && typeof payload.schema === 'object' ? payload.schema : null,
+      }
+      this.moduleConfigMetadata.set(moduleName, metadata)
+      return metadata
+    },
+
+    async getModuleConfigMetadata(moduleName) {
+      if (!this.moduleConfigMetadata) this.moduleConfigMetadata = new Map()
+      if (this.moduleConfigMetadata.has(moduleName)) return this.moduleConfigMetadata.get(moduleName)
+
+      try {
+        const response = await this.get('get', `data=defaultConfig&module=${encodeURIComponent(moduleName)}`)
+        return this.cacheModuleConfigMetadata(moduleName, JSON.parse(response))
+      }
+      catch {
+        return this.cacheModuleConfigMetadata(moduleName, null)
+      }
+    },
+
+    async createConfigPopup(index) {
+      if (typeof index === 'string') {
+        index = Number.parseInt(index)
+      }
+
+      const moduleData = this.savedData.config.modules,
+        data = moduleData[index]
+
+      const metadata = await this.getModuleConfigMetadata(data.module)
+      this.currentConfig = data
+      this.currentConfigDefaults = metadata.defaults
+      this.currentConfigSchema = metadata.schema
+      if (!('header' in this.currentConfig)) {
+        this.currentConfig.header = ''
+      }
+      if (!('position' in this.currentConfig)) {
+        this.currentConfig.position = ''
+      }
+
+      const wrapper = this.getPopupContent()
+
+      const title = document.createElement('div'),
+        subtitle = document.createElement('div')
+      title.className = 'bright title medium'
+      title.textContent = data.module ?? ''
+      subtitle.className = 'subtitle xsmall dimmed'
+      subtitle.textContent = `${data.module ?? ''} (#${index + 1})`
+      wrapper.append(
+        title,
+        subtitle,
+      )
+
+      this.appendConfigMenu(
+        index,
+        wrapper,
+      )
+
+      wrapper.append(this.createObjectGUI(
+        '<root>',
+        '',
+        this.currentConfig,
+      ))
+
+      // Disable input for module name
+      const moduleInput = document.getElementById('<root>/module')
+      moduleInput.disabled = true
+      moduleInput.classList.add('disabled')
+
+      this.showPopup()
+    },
+
+    createChangedWarning() {
+      const changed = Remote.createSymbolText(
+        'fa fa-fw fa-warning',
+        this.translate('UNSAVED_CHANGES'),
+        () => {
+          const saveButton = document.querySelector('#save-config')
+          if (!saveButton.classList.contains('highlight')) {
+            saveButton.classList.add('highlight')
+          }
+        },
+        'span',
+      )
+      changed.classList.add('module-remove')
+      return changed
+    },
+
+    async appendModuleEditElements(wrapper, moduleData) {
+      for (const [index, data] of moduleData.entries()) {
+        const moduleLine = document.createElement('div'),
+          moduleName = document.createElement('div'),
+          moduleButtons = document.createElement('div')
+        moduleLine.className = 'module-line'
+        moduleLine.dataset.moduleIndex = index
+        moduleName.className = 'module-name'
+        moduleName.textContent = data.module ?? ''
+        moduleButtons.className = 'module-buttons'
+        moduleLine.append(
+          moduleName,
+          moduleButtons,
+        )
+        wrapper.append(moduleLine)
+
+        const buttonsContainer = wrapper.lastElementChild.querySelector('.module-buttons')
+
+        const url = await this.getModuleUrl(data.module)
+        if (url) {
+          const repositoryButton = this.createSymbolText(
+            'fa fa-fw fa-github',
+            this.translate('REPOSITORY'),
+            () => {
+              window.open(
+                url,
+                '_blank',
+              )
+            },
+            'span',
+          )
+          repositoryButton.className = 'button'
+          buttonsContainer.insertBefore(
+            repositoryButton,
+            buttonsContainer.firstChild,
+          )
+        }
+
+        const editButton = this.createSymbolText(
+          'fa fa-fw fa-pencil',
+          this.translate('EDIT'),
+          (event) => {
+            const index_ = event.currentTarget.closest('.module-line').dataset.moduleIndex
+            this.createConfigPopup(index_)
+          },
+          'span',
+        )
+        editButton.id = `edit-module-${index}`
+        buttonsContainer.append(editButton)
+
+        if (this.changedModules.includes(index)) {
+          buttonsContainer.append(this.createChangedWarning())
+        }
+
+        const remove = Remote.createSymbolText(
+          'fa fa-fw fa-times-circle',
+          this.translate('REMOVE'),
+          (event) => {
+            const line = event.currentTarget.closest('.module-line')
+            this.deletedModules.push(Number.parseInt(line.dataset.moduleIndex))
+            line.remove()
+          },
+          'span',
+        )
+        remove.classList.add('module-remove')
+        buttonsContainer.append(remove)
+      }
+    },
+
+    async loadConfigModules() {
+      this.changedModules = []
+      this.generalConfigChanged = new Set()
+
+      try {
+        const { 'data': configData } = await this.loadList(
+            'config-modules',
+            'config',
+          ),
+          parent = document.querySelector('#config-modules-results'),
+          moduleData = configData.modules
+        this.configModulesOriginal = structuredClone(moduleData)
+        this.generalConfigOriginal = Object.fromEntries(
+          ['address', 'port', 'ipWhitelist']
+            .filter(key => Object.hasOwn(configData, key))
+            .map(key => [key, structuredClone(configData[key])]),
+        )
+        this.renderGeneralConfigSettings(configData)
+        if (this.addModule) {
+          const name = this.addModule
+          // We came here from adding a module
+          try {
+            const response = await this.get(
+                'get',
+                `data=defaultConfig&module=${name}`,
+              ),
+              newData = this.cacheModuleConfigMetadata(name, JSON.parse(response))
+            moduleData.push({ module: name, config: newData.defaults })
+            const index = moduleData.length - 1
+            this.changedModules.push(index)
+            this.appendModuleEditElements(
+              parent,
+              moduleData,
+            )
+            this.createConfigPopup(index)
+          }
+          catch (error) {
+            console.error(
+              'Error loading default config:',
+              error,
+            )
+          }
+          this.addModule = ''
+        }
+        else {
+          this.appendModuleEditElements(
+            parent,
+            moduleData,
+          )
+        }
+      }
+      catch (error) {
+        console.error(
+          'Error loading config modules:',
+          error,
+        )
+      }
+    },
+
+    renderGeneralConfigSettings(configData) {
+      const container = document.querySelector('#general-config-settings')
+      if (!container) return
+      const heading = document.createElement('h2')
+      heading.textContent = 'General settings'
+      const warning = document.createElement('div')
+      warning.className = 'settings-warning general-config-warning'
+      warning.hidden = true
+      warning.innerHTML = '<span class="fa fa-fw fa-exclamation-triangle" aria-hidden="true"></span><span>Changing address, port or IP whitelist can lock you out of Remote Control. Make sure you have another way to reach the mirror before saving.</span>'
+
+      const fields = document.createElement('div')
+      fields.className = 'general-config-fields'
+      const addField = (key, type, value, help) => {
+        const label = document.createElement('label')
+        label.className = 'config-label general-config-field'
+        const name = document.createElement('span')
+        name.className = 'label-name'
+        name.textContent = key
+        const input = document.createElement(key === 'ipWhitelist' ? 'textarea' : 'input')
+        input.className = 'global-config-input'
+        input.dataset.configKey = key
+        if (key === 'ipWhitelist') {
+          input.rows = 4
+          input.value = Array.isArray(value) ? value.join('\n') : ''
+          input.placeholder = 'One IP address or CIDR range per line'
+        }
+        else {
+          input.type = type
+          input.value = value ?? ''
+          if (key === 'port') {
+            input.required = true
+            input.min = '1'
+            input.max = '65535'
+            input.step = '1'
+          }
+        }
+        input.addEventListener('input', () => {
+          this.generalConfigChanged.add(key)
+          warning.hidden = false
+          document.querySelector('#save-config')?.classList.add('highlight')
+        })
+        label.title = help
+        label.append(name, input)
+        fields.append(label)
+      }
+
+      addField('address', 'text', configData.address, 'MagicMirror listen address')
+      addField('port', 'number', configData.port, 'MagicMirror server port')
+      addField('ipWhitelist', 'text', configData.ipWhitelist, 'Allowed client IP addresses or CIDR ranges')
+      container.replaceChildren(heading, warning, fields)
+    },
+
+    restoreConfigMenu() {
+      if (this.saving) {
+        return
+      }
+      const restoreButton = document.querySelector('#restore-config')
+      restoreButton.classList.remove('highlight')
+      this.setStatus('loading')
+      this.getData('saves')
+    },
+
+    handleRestoreConfigMenu(result) {
+      if (result.success) {
+        const dates = {}
+        for (const dateValue of result.data) {
+          const dateLabel = String(new Date(dateValue))
+
+          dates[dateLabel] = () => {
+            this.restoreConfig(dateValue)
+          }
+        }
+        this.offerOptions(
+          this.translate('RESTORE'),
+          dates,
+        )
+      }
+      else {
+        this.setStatus('error')
+      }
+    },
+
+    restoreConfig(date) {
+      // Prevent saving before current saving is finished
+      if (this.saving) {
+        return
+      }
+      this.saving = true
+      this.setStatus('loading')
+
+      this.sendSocketNotification(
+        'UNDO_CONFIG',
+        date,
+      )
+    },
+
+    saveConfig() {
+      // Prevent saving before current saving is finished
+      if (this.saving) {
+        return
+      }
+      const saveButton = document.querySelector('#save-config')
+      saveButton.classList.remove('highlight')
+      this.saving = true
+      this.setStatus('loading')
+      const configData = this.savedData.config
+      const originalModules = this.configModulesOriginal || []
+      const currentModules = configData.modules
+      const deletedModules = new Set(this.deletedModules)
+      const operations = []
+
+      for (const [index, original] of originalModules.entries()) {
+        if (deletedModules.has(index) || index >= currentModules.length) continue
+        this.appendConfigDiff(['modules', index], original, currentModules[index], operations)
+      }
+      const deletedIndices = [...deletedModules].toSorted((left, right) => right - left)
+      for (const index of deletedIndices) {
+        operations.push({ op: 'remove', path: ['modules', index] })
+      }
+      const addedModules = currentModules.slice(originalModules.length)
+      for (const [index, module] of addedModules.entries()) {
+        const originalIndex = originalModules.length + index
+        if (!deletedModules.has(originalIndex)) operations.push({ op: 'append', path: ['modules'], value: module })
+      }
+
+      const updatedGeneralConfig = structuredClone(this.generalConfigOriginal || {})
+      const changedGeneralConfigKeys = this.generalConfigChanged || new Set()
+      const globalInputs = [...document.querySelectorAll('.global-config-input')]
+      for (const key of changedGeneralConfigKeys) {
+        const input = globalInputs.find(element => element.dataset.configKey === key)
+        if (key === 'port') {
+          if (!input.reportValidity()) {
+            this.saving = false
+            this.setStatus('error')
+            return
+          }
+          updatedGeneralConfig[key] = input.valueAsNumber
+        }
+        else if (key === 'ipWhitelist') {
+          updatedGeneralConfig[key] = input.value.split(/\r?\n/u).map(value => value.trim()).filter(Boolean)
+        }
+        else {
+          updatedGeneralConfig[key] = input.value
+        }
+      }
+      this.appendConfigDiff([], this.generalConfigOriginal || {}, updatedGeneralConfig, operations)
+      Object.assign(configData, updatedGeneralConfig)
+
+      configData.modules = currentModules.filter((_, index) => !deletedModules.has(index))
+      this.deletedModules = []
+      this.sendSocketNotification(
+        'NEW_CONFIG',
+        { config: configData, operations },
+      )
+    },
+
+    appendConfigDiff(path, original, updated, operations) {
+      if (JSON.stringify(original) === JSON.stringify(updated)) return
+      if (original && updated && typeof original === 'object' && typeof updated === 'object' && !Array.isArray(original) && !Array.isArray(updated)) {
+        for (const key of Object.keys(original)) {
+          if (!Object.hasOwn(updated, key)) operations.push({ op: 'remove', path: [...path, key] })
+        }
+        for (const [key, value] of Object.entries(updated)) {
+          if (Object.hasOwn(original, key)) this.appendConfigDiff([...path, key], original[key], value, operations)
+          else operations.push({ op: 'add', path, key, value })
+        }
+        return
+      }
+      operations.push({ op: 'set', path, value: updated })
+    },
+
+    handleSaveConfig(result) {
+      if (result.success) {
+        this.offerReload(this.translate('DONE'))
+      }
+      else {
+        this.setStatus('error')
+      }
+      this.saving = false
+      this.loadConfigModules()
+    },
+
+  },
+)
