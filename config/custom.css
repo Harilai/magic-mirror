@@ -242,3 +242,21 @@ header {
     visibility: visible;
   }
 }
+
+/* -------------------------------------------------- */
+/* Imagen MMM-Meteosat: Animación Imagen */
+
+.MMM-Meteosat img {
+  animation: mm-tierra-respira 14s ease-in-out infinite alternate;
+  transform-origin: center;
+  will-change: transform;
+}
+
+@keyframes mm-tierra-respira {
+  from { transform: scale(1) translateY(0); }
+  to   { transform: scale(1.04) translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .MMM-Meteosat img { animation: none; }
+}

@@ -69,7 +69,7 @@ const config = {
 		},
 		{
 			module: "MMM-Remote-Control",
-			position: "bottom_left", 
+			// position: "bottom_left", 
 			config: {
 				customCommand: {}, // Optional, see "Using Custom Commands" below
 				secureEndpoints: true, // Optional, see API/README.md
@@ -82,6 +82,44 @@ const config = {
 				showQRCode: true, // Display a QR code for mobile access (default: true)
 				// qrCodeSize: 150, // QR code size in pixels (default: 150)
 				// qrCodePosition: "above" // "below", "above" (default), or "replace"
+			}
+		},
+		{
+			module: "MMM-Meteosat",
+			position: "bottom_left",
+			config: {
+				product: "geocolour", // infrared de noche
+				cacheId: "",
+				imageSize: 400,
+				wmsImageSize: 1800,
+				updateInterval: 10 * 60 * 1000,
+				showTimestamp: true,
+				timestampType: "acquisition",
+				timestampLocale: "de-DE",
+				timestampOptions: {
+				timeZone: "Europe/Berlin",
+				day: "2-digit",
+				month: "2-digit",
+				year: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				hour12: false
+				},
+				showSource: true,
+				showProduct: true,
+				showStatus: true,
+				showCoastlines: true,
+				showCountryBorders: false,
+				overlayOpacity: 0.6,
+				logLevel: "INFO",
+				staleAfter: 90 * 60 * 1000,
+				retryDelays: [15 * 1000, 45 * 1000],
+				messages: {
+				loading: "Loading Meteosat image …",
+				noImage: "No Meteosat image is available yet.",
+				error: "Meteosat image could not be loaded.",
+				stale: "delayed"
+				}
 			}
 		},
 		{
