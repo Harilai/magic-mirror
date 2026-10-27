@@ -60,7 +60,7 @@
 		"start:wayland": "./node_modules/.bin/electron js/electron.js --ozone-platform=wayland",
 		"start:wayland:dev": "node --run start:wayland -- dev",
 		"start:windows": ".\\node_modules\\.bin\\electron js\\electron.js",
-		"start:windows:dev": "node --run start:windows -- dev",
+		"start:windows:dev": "set MM_CONFIG_FILE=config/config.dev.js&& node --run start:windows",
 		"start:x11": "DISPLAY=\"${DISPLAY:=:0}\" ./node_modules/.bin/electron js/electron.js",
 		"start:x11:dev": "node --run start:x11 -- dev",
 		"test": "vitest run",

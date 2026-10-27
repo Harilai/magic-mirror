@@ -1,5 +1,34 @@
 <!doctype html>
 <html lang="en">
+  <style>
+    /* Modo usuario: solo Encendido, Editar vista y Alertas / Notificaciones */
+    html:not(.dev) #settings-button,
+    html:not(.dev) #classes-button,
+    html:not(.dev) #update-button,
+    html:not(.dev) #links-button,
+    html:not(.dev) #notification-button,
+    html:not(.dev) #mirror-link-button {
+      display: none !important;
+    }
+  </style>
+  <script>
+    // Modo desarrollador: abrir remote.html?dev
+    (function () {
+      var dev = new URLSearchParams(location.search).has("dev");
+      if (dev) document.documentElement.classList.add("dev");
+
+      // Evita entrar a los menús ocultos escribiendo su dirección a mano
+      var ocultos = ["settings-menu", "classes-menu", "update-menu", "links-menu","notification-button"];
+      function bloquear() {
+        if (!dev && ocultos.indexOf(location.hash.replace("#", "")) !== -1) {
+          location.replace(location.pathname);
+        }
+      }
+      bloquear();
+      window.addEventListener("hashchange", bloquear);
+    })();
+  </script>
+
   <head>
     <title>%%TRANSLATE:TITLE%%</title>
     <meta charset="utf-8" />

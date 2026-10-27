@@ -126,7 +126,7 @@ Los pasos de instalación son:
 
 1. Clonarte el repo : "https://github.com/Jopyth/MMM-Remote-Control"
 2. Dentro de la carpeta ejecutar el comando de instalación : "npm ci --omit=dev"
-3. Añadir el modulo al config.js y configurar la ipWhitelist con tu ip : "::ffff:xxx.xxx.xx.0/120"," xxx.xxx.xx.0/24" y establecer address como "8.8.8.8"
+3. Añadir el modulo al config.js y configurar la ipWhitelist con tu ip : "::ffff:xxx.xxx.xx.0/120","xxx.xxx.xx.0/24" y establecer address como "0.0.0.0"
 
 > [IMPORTANTE]
 > Debes estar conectado a la misma red wifi para poder usarlo
