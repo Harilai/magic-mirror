@@ -52,7 +52,6 @@
 		"install-mm": "npm install --no-audit --no-fund --no-update-notifier --only=prod --omit=dev",
 		"install-mm:dev": "npm install --no-audit --no-fund --no-update-notifier && npx playwright install chromium",
 		"lint:fix": "eslint --fix && prettier . --write",
-		"prepare": "[ -f node_modules/.bin/husky ] && husky || echo no husky installed.",
 		"server": "node ./serveronly",
 		"server:watch": "node ./serveronly/watcher.js",
 		"start": "node --run start:wayland",
@@ -74,19 +73,12 @@
 		"test:unit": "vitest run tests/unit",
 		"test:watch": "vitest"
 	},
-	"lint-staged": {
-		"*": [
-			"eslint --fix",
-			"prettier --write --ignore-unknown"
-		]
-	},
 	"dependencies": {
 		"@fontsource/roboto": "^5.3.0",
 		"@fontsource/roboto-condensed": "^5.3.0",
 		"@fortawesome/fontawesome-free": "^7.3.1",
 		"animate.css": "^4.1.1",
 		"croner": "^10.0.1",
-		"eslint": "^10.11.0",
 		"express": "^5.2.1",
 		"feedparser": "^2.6.0",
 		"globals": "^17.13.0",

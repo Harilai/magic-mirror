@@ -1,0 +1,26 @@
+# Node.js dependencies
+node_modules/
+
+# Runtime cache
+cache/*
+!cache/.gitkeep
+
+# Temporary files
+*.tmp
+*.log
+
+# Editor and operating-system files
+.DS_Store
+.vscode/
+.idea/
+
+# Local configuration and secrets
+/config.js
+*.env
+.env
+
+# Local backups and archives
+*.tar.gz
+*.bak-*
+*.before-*
+backup-debug-logging-*/

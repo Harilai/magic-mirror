@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WMS_Capabilities>
+  <Capability><Layer>
+    <Layer>
+      <Name>msg_fes:rgb_geocolour</Name>
+      <Dimension name="time">2026-07-22T10:00:00Z/2026-07-22T10:40:00Z/PT10M</Dimension>
+    </Layer>
+    <Layer>
+      <Name>msg_fes:rgb_dust</Name>
+      <Extent name="time">2026-07-22T10:10:00Z,2026-07-22T10:20:00Z,2026-07-22T10:30:00Z</Extent>
+    </Layer>
+  </Layer></Capability>
+</WMS_Capabilities>
