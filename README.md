@@ -76,6 +76,9 @@ En el módulo de calendario he modificado la URL (desde `config.js`).
 > [!CUMPLEAÑOS]
 > Hay un error al mostrar "fechas de cumpleaños, años": al haber creado el evento este año, no lo muestra. Se debe añadir manualmente al archivo `/calendar/ics/archivo`, siguiendo la estructura que hay.
 
+> [FIESTAS]
+> Hay un calendario para mostrar la fiestas de cantabria.
+
 ### Tiempo
 
 El tiempo se muestra por coordenadas ajustables en el `config.js`. Ahora están puestas las de Maliaño, que se asemejan a las de Santander. Está configurado de modo que muestre el tiempo de ahora y el de los próximos días.
@@ -120,7 +123,7 @@ Además, he modificado el CSS para que tenga un estilo mejor, para que la UI de 
 
 ### 📱 Remote Control
 
-He añadido el modulo **MMM-Remote-Control**, esto permite acceder de forma externa (mediante una aplicacion) el espejo interactivo. Para esto debes estar conectado a la misma red y acceder a la url (Ip_de_raspberry:8080/remote.html) una vez abierto tendras la opcion de poder añadir la pagina como shortcut. La pagina tendra dos modos, dev y usuario donde se mostraran solo apartados útiles del dia a dia (encender,apagar,reiniciar,cambiar tonos...).
+He añadido el modulo **MMM-Remote-Control**, esto permite acceder de forma externa (mediante una aplicacion) el espejo interactivo. Para esto debes estar conectado a la misma red y acceder a la url (Ip_de_raspberry:8080/remote.html) una vez abierto tendras la opcion de poder añadir la pagina como shortcut. La pagina tendra dos modos, dev y usuario donde se mostraran solo apartados útiles del dia a dia (encender,apagar,reiniciar,cambiar tonos...). El qr que se muestra 30 segundos y se desvanece por 60 segundos.
 
 Los pasos de instalación son:
 
