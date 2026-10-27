@@ -345,19 +345,19 @@ Module.register('MMM-Remote-Control', {
       }
 
       // Add URL text below QR code
-      if (this.config.qrCodePosition === 'above') {
-        const urlText = document.createElement('div')
-        urlText.innerHTML = url
-        urlText.className = 'normal xsmall url-text'
-        container.append(urlText)
-      }
+      // if (this.config.qrCodePosition === 'above') {
+      //   const urlText = document.createElement('div')
+      //   urlText.innerHTML = url
+      //   urlText.className = 'normal xsmall url-text'
+      //   container.append(urlText)
+      // }
 
       wrapper.append(container)
     }
     else {
       // Just show URL text
-      wrapper.innerHTML = url
-      wrapper.className = 'normal xsmall'
+      // wrapper.innerHTML = url
+      // wrapper.className = 'normal xsmall'
     }
 
     return wrapper

@@ -69,7 +69,7 @@ const config = {
 		},
 		{
 			module: "MMM-Remote-Control",
-			position: "bottom_left",
+			position: "bottom_left", 
 			config: {
 				customCommand: {}, // Optional, see "Using Custom Commands" below
 				secureEndpoints: true, // Optional, see API/README.md
@@ -77,7 +77,7 @@ const config = {
 				// customMenu: "custom_menu.json", // See "Custom Menu Items" below
 				apiKey: "964ec7b8-d8a8-4c76-9d9b-20561832e959", // See API/README.md for details
 				// classes: {}, // See "Custom Classes" below
-				showModuleApiMenu: true, // Disable the Module Controls menu
+				showModuleApiMenu: false, // Disable the Module Controls menu
 				// showNotificationMenu: false, // Disable the Notification menu
 				showQRCode: true, // Display a QR code for mobile access (default: true)
 				// qrCodeSize: 150, // QR code size in pixels (default: 150)
@@ -113,13 +113,18 @@ const config = {
 						fetchInterval: 7 * 24 * 60 * 60 * 1000,
 						symbol: "calendar-check",
 						url: "https://calendar.google.com/calendar/ical/danitejeroperedo13%40gmail.com/public/basic.ics",
-						maximumNumberOfDays: 30
+						limitdays: 30
 					},
 					{
 						fetchInterval: 7 * 24 * 60 * 60 * 1000,
 						symbol: "calendar-check",
 						url: "http://localhost:8080/defaultmodules/calendar/ics/cumpleanos.ics",
 						repeatingCountTitle: " años",
+					},
+					{
+						fetchInterval: 7 * 24 * 60 * 60 * 1000,
+						symbol: "calendar-check",
+						url: "https://calendar.google.com/calendar/ical/es.spain%23holiday%40group.v.calendar.google.com/public/basic.ics",
 					}
 				]
 			}

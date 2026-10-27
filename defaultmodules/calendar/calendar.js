@@ -5,7 +5,7 @@ Module.register("calendar", {
 	defaults: {
 		maximumEntries: 10, // Total Maximum Entries
 		maximumNumberOfDays: 365,
-		limitDays: 0, // Limit the number of days shown, 0 = no limit
+		limitDays: 15, // Limit the number of days shown, 0 = no limit
 		pastDaysCount: 0,
 		displaySymbol: true,
 		defaultSymbol: "calendar-days", // Fontawesome Symbol see https://fontawesome.com/search?ic=free&o=r

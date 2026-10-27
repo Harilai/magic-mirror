@@ -208,4 +208,37 @@ header {
   top: 80%;
 }
 
-/* ----------------------------- */
+/* -------------------------------------------------- */
+/* QR de Remote Control: visible y luego se desvanece */
+
+.qrcode-container {
+  overflow: hidden;
+  animation: mm-qr-ciclo 94s ease infinite;
+}
+
+@keyframes mm-qr-ciclo {
+  /* Visible: 0 a 30 s */
+  0%, 31.915% {
+    opacity: 1;
+    max-height: 400px;
+    visibility: visible;
+  }
+  /* Se desvanece: 30 a 32 s */
+  34.043% {
+    opacity: 0;
+    max-height: 400px;
+    visibility: visible;
+  }
+  /* Oculto y sin ocupar sitio: 32 a 92 s (60 s) */
+  34.05%, 97.872% {
+    opacity: 0;
+    max-height: 0;
+    visibility: hidden;
+  }
+  /* Reaparece: 92 a 94 s */
+  100% {
+    opacity: 1;
+    max-height: 400px;
+    visibility: visible;
+  }
+}
