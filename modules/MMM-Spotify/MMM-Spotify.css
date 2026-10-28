@@ -31,8 +31,8 @@
 }
 
 
-/* #SPOTIFY.inactive {
-} */
+#SPOTIFY.inactive {
+}
 
 #SPOTIFY_BACKGROUND {
   background-size: cover;
@@ -355,21 +355,8 @@ progress[value]#SPOTIFY_PROGRESS_BAR::-webkit-progress-bar {
   width:calc(var(--sp-width) - 240px);
 }
 
-#SPOTIFY.inactive #SPOTIFY_MISC > * {
-  display: none;
-}
-
-#SPOTIFY.inactive #SPOTIFY_MISC > #SPOTIFY_CONTROL {
-  display: flex;
-}
-
-#SPOTIFY.inactive #SPOTIFY_CONTROL > * {
-  display: none;
-}
-
-#SPOTIFY.inactive #SPOTIFY_CONTROL > #SPOTIFY_CONTROL_ACCOUNTS {
-  display: flex;
-}
+/* Estado "inactive": antes se vaciaba el contenido de golpe.
+   Ahora se mantiene tal cual y el módulo se oculta con custom.css (desvanecimiento). */
 
 /* style "minimalistBar" */
 #SPOTIFY.minimalistBar {

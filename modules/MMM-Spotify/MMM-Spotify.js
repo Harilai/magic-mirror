@@ -192,7 +192,7 @@ Module.register("MMM-Spotify", {
     if (this.connected && !status) {
       this.connected = false
       this.currentPlayback = null
-      this.updateCoverImage()
+      // this.updateCoverImage() hace que se oculte bruscamente
       this.sendNotification("SPOTIFY_DISCONNECTED")
     }
     if (!this.connected && status) {

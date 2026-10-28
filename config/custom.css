@@ -208,55 +208,136 @@ header {
   top: 80%;
 }
 
-/* -------------------------------------------------- */
-/* QR de Remote Control: visible y luego se desvanece */
 
-.qrcode-container {
-  overflow: hidden;
-  animation: mm-qr-ciclo 94s ease infinite;
+/* --------------------------------------------------------- */
+/* ======= Relevo QR / Meteosat en la misma esquina ======= */
+
+.region.bottom.left .container {
+  display: grid;
+}
+
+.region.bottom.left .container > .module {
+  grid-area: 1 / 1;
+  align-self: end;
+  justify-self: start;
+}
+
+
+/* ========================================================= */
+/* REMOTE CONTROL */
+/* ========================================================= */
+
+.MMM-Remote-Control {
+  animation: mm-qr-ciclo 150s linear infinite;
 }
 
 @keyframes mm-qr-ciclo {
-  /* Visible: 0 a 30 s */
-  0%, 31.915% {
+  /* Visible hasta el segundo 28,5 */
+  0%, 19% {
     opacity: 1;
-    max-height: 400px;
     visibility: visible;
   }
-  /* Se desvanece: 30 a 32 s */
-  34.043% {
+
+  /* Desaparece hasta el segundo 30 */
+  20% {
     opacity: 0;
-    max-height: 400px;
-    visibility: visible;
-  }
-  /* Oculto y sin ocupar sitio: 32 a 92 s (60 s) */
-  34.05%, 97.872% {
-    opacity: 0;
-    max-height: 0;
     visibility: hidden;
   }
-  /* Reaparece: 92 a 94 s */
+
+  /* Permanece completamente oculto */
+  20.001%, 99.333% {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  /* Vuelve a aparecer al reiniciar el ciclo */
   100% {
     opacity: 1;
-    max-height: 400px;
     visibility: visible;
   }
 }
 
-/* -------------------------------------------------- */
-/* Imagen MMM-Meteosat: Animación Imagen */
+
+/* ========================================================= */
+/* METEOSAT */
+/* ========================================================= */
+
+.MMM-Meteosat {
+  transform-origin: center;
+  animation: mm-meteosat-ciclo 150s linear infinite;
+}
+
+@keyframes mm-meteosat-ciclo {
+  /* Oculto hasta el segundo 32 */
+  0%, 20.333% {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.92);
+  }
+
+  /* Aparece progresivamente */
+  22.333% {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+  }
+
+  /* Permanece visible */
+  22.334%, 97.555% {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+  }
+
+  98.777% {
+  opacity: 0;
+  visibility: visible;
+  transform: scale(0.92);
+  }
+
+  /* Desaparece al final del ciclo */
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.92);
+  }
+}
+
+
+/* ========================================================= */
+/* GIRO DE LA TIERRA */
+/* ========================================================= */
 
 .MMM-Meteosat img {
-  animation: mm-tierra-respira 14s ease-in-out infinite alternate;
+  animation: mm-tierra-gira 180s linear infinite;
   transform-origin: center;
   will-change: transform;
 }
 
-@keyframes mm-tierra-respira {
-  from { transform: scale(1) translateY(0); }
-  to   { transform: scale(1.04) translateY(-4px); }
+
+/* ========================================================= */
+/* MMM-SpotifyUI */
+/* ========================================================= */
+
+.MMM-Spotify {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+
+  transition:
+    opacity 1.5s ease-in-out,
+    visibility 0s linear 0s;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .MMM-Meteosat img { animation: none; }
+/* Cuando no hay reproducción */
+
+.MMM-Spotify:has(#SPOTIFY.inactive),
+.MMM-Spotify:has(#SPOTIFY.noPlayback) {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  transition:
+    opacity 1.5s ease-in-out,
+    visibility 0s linear 1.5s;
 }
