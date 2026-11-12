@@ -1,9 +1,9 @@
-# Serveronly hardware and module compatibility (Block 3)
+# Serveronly hardware and module compatibility (Blocks 3–4)
 
 **Repository:** `Harilai/magic-mirror`  
 **Work branch:** `feature/magicmirror-serveronly-deployment`  
 **Reviewed baseline:** MagicMirror `2.39.0-develop`, Node engine `>=22.22.2 <23 || >=24`, Electron `^44.5.1`.  
-**Status:** source/configuration audit plus upstream platform-documentation check. No target board was available, so this is not a physical-device certification.
+**Status:** source/configuration audit, upstream platform-documentation check, and automated host-side diagnostic implementation. No target board was available, so this is not a physical-device certification.
 
 ## 1. Runtime compatibility by CPU architecture
 
