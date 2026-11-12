@@ -53,7 +53,7 @@ This table compares technical fit, not current availability or price. No purchas
 
 ## 4. Target-device acceptance checks
 
-Run these on the exact board and OS image before enabling automatic startup:
+Run the automated diagnostic on the exact board and OS image before enabling automatic startup:\n\n```bash\nnpm run server:device-check\n# Optional JSON report:\nnpm run server:device-check -- --json > device-check.json\n```\n\nIt checks the runtime, detected distro/libc, RAM, Chromium executable, configured module entry points, Remote Control configuration hygiene, and runs a small native `sharp` image conversion when `MMM-Meteosat` is present. A FAIL means do not promote the device to automatic kiosk startup. Review every WARN manually.\n\nThe report deliberately does not print configuration secrets. Do not share the JSON file without reviewing it for system metadata first.\n\nFor independent manual inspection, run these commands too:
 
 ```bash
 uname -m
