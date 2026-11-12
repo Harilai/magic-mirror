@@ -78,20 +78,22 @@ function inspectConfiguredModules(config, results) {
 		const isDefault = fs.existsSync(path.join(defaultModulesDir, name));
 		const moduleDir = isDefault ? path.join(defaultModulesDir, name) : path.join(customModulesDir, name);
 		const packagePath = path.join(moduleDir, "package.json");
-		let entryPath = path.join(moduleDir, `${name}.js`);
+		const entryPaths = [path.join(moduleDir, `${name}.js`)];
 		if (fs.existsSync(packagePath)) {
 			try {
 				const metadata = JSON.parse(fs.readFileSync(packagePath, "utf8"));
-				if (metadata.main) entryPath = path.resolve(moduleDir, metadata.main);
+				if (metadata.main) entryPaths.push(path.resolve(moduleDir, metadata.main));
 			} catch (error) {
 				add(results, "FAIL", `module:${name}`, `Invalid package.json: ${error.message}`);
 				continue;
 			}
 		}
-		if (fs.existsSync(entryPath)) {
-			add(results, "PASS", `module:${name}`, `Entry point found: ${path.relative(ROOT, entryPath)}`);
+		const uniqueEntries = [...new Set(entryPaths)];
+		const missingEntries = uniqueEntries.filter((entryPath) => !fs.existsSync(entryPath));
+		if (missingEntries.length === 0) {
+			add(results, "PASS", `module:${name}`, `Client and declared entry points found: ${uniqueEntries.map((entryPath) => path.relative(ROOT, entryPath)).join(", ")}`);
 		} else {
-			add(results, "FAIL", `module:${name}`, `Entry point not found under ${path.relative(ROOT, moduleDir)}`);
+			add(results, "FAIL", `module:${name}`, `Required entry point(s) missing: ${missingEntries.map((entryPath) => path.relative(ROOT, entryPath)).join(", ")}`);
 		}
 	}
 
@@ -180,7 +182,11 @@ async function collectDiagnostics() {
 		add(results, "FAIL", "operating-system", `Expected Linux for the documented Chromium kiosk deployment; detected ${platform}.`);
 	}
 
-	add(results, "PASS", "architecture", `${architecture}${bits ? ` / ${bits}-bit` : ""}.`);
+	if (["x64", "arm64", "arm"].includes(architecture)) {
+		add(results, "PASS", "architecture", `${architecture}${bits ? ` / ${bits}-bit` : ""}.`);
+	} else {
+		add(results, "FAIL", "architecture", `Unsupported deployment architecture: ${architecture}.`);
+	}
 	if (isSupportedNode(version, architecture)) {
 		add(results, "PASS", "node-engine", `Node.js ${version} satisfies repository engine ${REQUIRED_NODE}.`);
 	} else {
