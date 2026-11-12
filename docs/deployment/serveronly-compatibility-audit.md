@@ -103,3 +103,18 @@ The core app registers SIGINT and SIGTERM handlers and stops the server and node
 **Not yet proven:** all custom modules work under Chromium/Serveronly; the target board can run the required Node version and native `sharp` dependency; the exact TodayEvents source; Raspotify's runtime sockets on the target OS; and sustained performance on candidate hardware.
 
 **Next block:** implement the alternate launch/deployment path on this branch with explicit port configuration, preflight checks, process ownership, systemd lifecycle, and kiosk startup. Keep Electron as the unchanged default path until integration tests pass.
+
+
+## 8. Block 3 follow-up: architecture and module audit
+
+The detailed compatibility matrix and target-device acceptance checklist are maintained in [serveronly-hardware-compatibility.md](./serveronly-hardware-compatibility.md).
+
+Corrections and additional findings:
+
+- `MMM-TodayEvents` is present as a tracked frontend file. It has no `node_helper.js` or module-level `package.json`; the earlier uncertainty about its source location is resolved.
+- The committed `MMM-Meteosat` lockfile resolves `sharp@0.35.5` and optional Linux ARM and ARM64 platform packages. The upstream prebuilt binaries have different libc minimums; verify the target with `ldd --version` and test `require("sharp")` on the board.
+- The Meteosat image worker launches `node` from `PATH` unless `MMM_METEOSAT_NODE_BINARY` is provided. A systemd service using a non-system Node installation must make the same Node executable available to that child process.
+- `MMM-Remote-Control` registers its remote routes on the shared server, but some actions explicitly access Electron's `BrowserWindow` and will not control Chromium kiosk windows. Its default monitor commands assume `wlopm`; shutdown/reboot use privileged OS commands and need a deliberate least-privilege configuration.
+- `MMM-Spotify` normal playback uses the provisioned token. Its first-time OAuth flow can invoke an external browser and starts the separate callback listener.
+
+**Next block:** prepare target-board acceptance tests and run them on the exact selected hardware/OS. Do not claim sustained performance, reliable automatic boot, GPU acceleration, or module compatibility until those physical tests pass.
