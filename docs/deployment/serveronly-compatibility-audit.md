@@ -71,7 +71,7 @@ Findings:
 | MMM-Spotify | Node helper uses filesystem, timers, Axios and Spotify API. OAuth callback opens a separate Express listener, default port 8888. | Confirm token files are local/untracked; test OAuth separately from normal playback. Verify Raspotify is a separate audio receiver, not a module listener. |
 | MMM-Meteosat | Node helper uses filesystem, timers, network requests, image processing via `sharp`; package declares Node >=20.9.0. | Validate native `sharp` binary for the target CPU/OS/libc; measure RAM and image-processing load on the candidate board. |
 | MMM-MagicMover | Browser-side DOM manipulation and `setInterval`; no node helper. | Test visual movement and cleanup in Chromium kiosk mode. |
-| MMM-TodayEvents | It is referenced by the current config, but the expected paths `modules/MMM-TodayEvents/package.json` and `node_helper.js` were not found on `develop`. | Locate the actual source/repository or confirm whether it is a local-only module before declaring compatibility. |
+| MMM-TodayEvents | Tracked frontend source exists at `modules/MMM-TodayEvents/MMM-TodayEvents.js`; no module `package.json` or `node_helper.js` is present. It listens to `CALENDAR_EVENTS` and uses bundled `moment.js`. | Frontend-only; validate event rendering in Chromium kiosk mode. The original Block 1 source-location note is superseded by the Block 3 inspection. |
 | Default modules | Loaded by MagicMirror's core; calendar includes a local ICS URL on port 8080 and remote calendar feeds. | Test feeds and local ICS route in Serveronly; no extra local port expected. |
 
 ## 5. Process and service supervision
@@ -100,7 +100,7 @@ The core app registers SIGINT and SIGTERM handlers and stops the server and node
 
 **Confirmed:** the core Serveronly entry point exists; Socket.IO and MMM-Remote-Control share the main HTTP server; Spotify OAuth is the only additional local TCP listener identified in the reviewed custom modules; MMM-Meteosat and MMM-MagicMover do not open listeners in their reviewed helpers.
 
-**Not yet proven:** all custom modules work under Chromium/Serveronly; the target board can run the required Node version and native `sharp` dependency; the exact TodayEvents source; Raspotify's runtime sockets on the target OS; and sustained performance on candidate hardware.
+**Not yet proven:** all custom modules work under Chromium/Serveronly; target-board installation of native `sharp`; Raspotify's runtime sockets on the target OS; and sustained performance on candidate hardware. Block 3 located the tracked TodayEvents frontend source and documented its runtime.
 
 **Next block:** implement the alternate launch/deployment path on this branch with explicit port configuration, preflight checks, process ownership, systemd lifecycle, and kiosk startup. Keep Electron as the unchanged default path until integration tests pass.
 
