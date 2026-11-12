@@ -53,6 +53,8 @@
 		"install-mm:dev": "npm install --no-audit --no-fund --no-update-notifier && npx playwright install chromium",
 		"lint:fix": "eslint --fix && prettier . --write",
 		"server": "node ./serveronly",
+		"server:preflight": "node scripts/serveronly-preflight.js",
+		"server:kiosk": "node scripts/serveronly-kiosk.js",
 		"server:watch": "node ./serveronly/watcher.js",
 		"start": "node --run start:wayland",
 		"start:dev": "node --run start:wayland -- dev",
