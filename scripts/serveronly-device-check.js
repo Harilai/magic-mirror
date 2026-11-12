@@ -139,10 +139,18 @@ function checkSecurityConfig(config, results) {
   }
 
   const whitelist = Array.isArray(config.ipWhitelist) ? config.ipWhitelist : [];
-  if (whitelist.some((entry) => typeof entry === "string" && entry !== entry.trim())) {
+  if (whitelist.length === 0) {
+    add(results, "WARN", "ip-whitelist-empty", "ipWhitelist is empty or missing; the mirror may accept connections from any source address.");
+  } else if (whitelist.some((entry) => typeof entry === "string" && entry !== entry.trim())) {
     add(results, "WARN", "ip-whitelist-whitespace", "At least one ipWhitelist entry has leading or trailing whitespace.");
   } else {
     add(results, "PASS", "ip-whitelist-whitespace", "No whitespace issue detected in ipWhitelist.");
+  }
+
+  if (config.address === "0.0.0.0" || config.address === "::") {
+    add(results, "WARN", "network-bind-address", "MagicMirror listens on all network interfaces. Keep a restrictive ipWhitelist and host firewall; do not expose the service publicly.");
+  } else {
+    add(results, "PASS", "network-bind-address", `Configured bind address is ${config.address || "localhost"}.`);
   }
 
   const apiKey = remote.config?.apiKey;
