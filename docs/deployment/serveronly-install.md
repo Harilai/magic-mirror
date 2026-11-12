@@ -5,7 +5,7 @@ This deployment runs the existing MagicMirror Serveronly backend as a user servi
 ## Requirements
 
 - Linux with a graphical desktop session (X11 or Wayland) for the kiosk display.
-- Node.js matching this repository's engine: `>=22.22.2 <23` or `>=24`.
+- Node.js matching this repository's engine: `>=22.22.2 <23` or `>=24` (prefer Node 22.22.2 for a controlled ARMv7 Serveronly test).\n- A supported CPU/OS/libc combination for any native module. In this configuration, `MMM-Meteosat` requires a compatible `sharp` binary; see [the hardware compatibility matrix](./serveronly-hardware-compatibility.md).
 - Dependencies installed in the MagicMirror checkout (`npm install` or the project's documented production install).
 - Chromium installed and available as `chromium`, or set `MM_BROWSER_BIN` to its executable path.
 - A valid local `config/config.js`.
@@ -65,7 +65,7 @@ cp deploy/systemd/magicmirror-kiosk.service.example ~/.config/systemd/user/magic
 Edit both files:
 
 - Change `WorkingDirectory=%h/MagicMirror` if the checkout is elsewhere.
-- Ensure `node` is available in the systemd user manager's `PATH`. For an nvm installation, add the exact Node installation's `bin` directory to `Environment=PATH=...` in both units, or use the absolute Node executable in `ExecStartPre` and `ExecStart`.
+- Ensure `node` is available in the systemd user manager's `PATH`. For an nvm installation, add the exact Node installation's `bin` directory to `Environment=PATH=...` in both units, or use the absolute Node executable in `ExecStartPre` and `ExecStart`. `MMM-Meteosat` starts a child worker by resolving `node` from `PATH`; set `MMM_METEOSAT_NODE_BINARY` to the same executable if the service path is non-standard.
 - If using `MM_CONFIG_FILE` or `MM_PORT`, set the same values in **both** units.
 
 Then reload and start the backend:
@@ -111,6 +111,6 @@ Do not enable the kiosk unit at boot until you have confirmed how your desktop s
 - It does not install or configure Raspotify, audio devices, GPU acceleration, display rotation, touch input, or screen blanking.
 - The kiosk launcher assumes the desktop session has already provided a usable display environment.
 - The preflight port check is a point-in-time check; a different process could claim the port between preflight and server bind. MagicMirror's own bind error remains authoritative.
-- Native dependencies such as `sharp` must be installed for the target CPU architecture, operating system and libc. Do not copy `node_modules` from a different architecture.
+- Native dependencies such as `sharp` must be installed for the target CPU architecture, operating system and libc. Do not copy `node_modules` from a different architecture. On ARMv7, the locked `sharp` prebuilt requires glibc >=2.36 and Electron 44 is not available; use Serveronly + a matching Chromium package only after checking the target OS. Prefer ARM64 or x86_64 for the baseline deployment. See [the detailed compatibility matrix](./serveronly-hardware-compatibility.md).
 
 Run the manual tests on the target board before enabling automatic startup.
