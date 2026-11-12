@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, "..");
 const REQUIRED_NODE = ">=22.22.2 <23 or >=24";
 
 function parseVersion(value) {
-  const match = /^(?:v)?(\\d+)\\.(\\d+)\\.(\\d+)/.exec(String(value));
+  const match = /^(?:v)?(\d+)\.(\d+)\.(\d+)/.exec(String(value));
   if (!match) return null;
   return match.slice(1).map(Number);
 }
@@ -26,7 +26,7 @@ function isSupportedNode(version, architecture = process.arch) {
 
 function parseOsRelease(content) {
   const values = {};
-  for (const line of String(content).split(/\\r?\\n/)) {
+  for (const line of String(content).split(/\r?\n/)) {
     const match = /^([A-Z0-9_]+)=(.*)$/.exec(line);
     if (!match) continue;
     values[match[1]] = match[2].replace(/^"|"$/g, "");
@@ -182,7 +182,7 @@ async function collectDiagnostics() {
     add(results, "PASS", "libc", `glibc ${glibc} detected.`);
   } else {
     const ldd = run("ldd", ["--version"]);
-    const firstLine = (ldd.stdout || ldd.stderr || "").split(/\\r?\\n/)[0].trim();
+    const firstLine = (ldd.stdout || ldd.stderr || "").split(/\r?\n/)[0].trim();
     add(results, "WARN", "libc", firstLine || "glibc version not reported by Node; this may be a musl-based system. Validate native sharp support on this OS.");
   }
 
