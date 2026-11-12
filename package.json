@@ -55,6 +55,7 @@
 		"server": "node ./serveronly",
 		"server:preflight": "node scripts/serveronly-preflight.js",
 		"server:kiosk": "node scripts/serveronly-kiosk.js",
+		"server:device-check": "node scripts/serveronly-device-check.js",
 		"server:watch": "node ./serveronly/watcher.js",
 		"start": "node --run start:wayland",
 		"start:dev": "node --run start:wayland -- dev",
