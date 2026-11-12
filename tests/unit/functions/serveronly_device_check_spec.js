@@ -39,14 +39,14 @@ describe("serveronly device-check helpers", () => {
 
   describe("parseOsRelease", () => {
     it("parses quoted and unquoted distro fields", () => {
-      expect(parseOsRelease('ID=debian\\nPRETTY_NAME="Debian GNU/Linux"')).toEqual({
+      expect(parseOsRelease('ID=debian\nPRETTY_NAME="Debian GNU/Linux"')).toEqual({
         ID: "debian",
         PRETTY_NAME: "Debian GNU/Linux"
       });
     });
 
     it("ignores comments and malformed lines", () => {
-      expect(parseOsRelease('# comment\\nBROKEN_LINE')).toEqual({});
+      expect(parseOsRelease('# comment\nBROKEN_LINE')).toEqual({});
     });
   });
 });
