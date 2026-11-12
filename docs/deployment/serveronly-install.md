@@ -5,12 +5,23 @@ This deployment runs the existing MagicMirror Serveronly backend as a user servi
 ## Requirements
 
 - Linux with a graphical desktop session (X11 or Wayland) for the kiosk display.
-- Node.js matching this repository's engine: `>=22.22.2 <23` or `>=24` (prefer Node 22.22.2 for a controlled ARMv7 Serveronly test).\n- A supported CPU/OS/libc combination for any native module. In this configuration, `MMM-Meteosat` requires a compatible `sharp` binary; see [the hardware compatibility matrix](./serveronly-hardware-compatibility.md).
+- Node.js matching this repository's engine: `>=22.22.2 <23` or `>=24` (prefer Node 22.22.2 for a controlled ARMv7 Serveronly test).
+- A supported CPU/OS/libc combination for any native module. In this configuration, `MMM-Meteosat` requires a compatible `sharp` binary; see [the hardware compatibility matrix](./serveronly-hardware-compatibility.md).
 - Dependencies installed in the MagicMirror checkout (`npm install` or the project's documented production install).
 - Chromium installed and available as `chromium`, or set `MM_BROWSER_BIN` to its executable path.
 - A valid local `config/config.js`.
 
-The preflight intentionally does not install packages, modify the user's config, stop processes, or open firewall ports.\n\nFor a broader target-device diagnostic (architecture, Node, libc, Chromium, configured module entry points, `sharp` image-processing smoke test, and selected security warnings), run:\n\n```bash\nnpm run server:device-check\n# Machine-readable output for support bundles:\nnpm run server:device-check -- --json\n```\n\nThe device check exits non-zero when a required acceptance check fails. Warnings still require review; they are not an automatic approval.
+The preflight intentionally does not install packages, modify the user's config, stop processes, or open firewall ports.
+
+For a broader target-device diagnostic (architecture, Node, libc, Chromium, configured module entry points, `sharp` image-processing smoke test, and selected security warnings), run:
+
+```bash
+npm run server:device-check
+# Machine-readable output for support bundles:
+npm run server:device-check -- --json
+```
+
+The device check exits non-zero when a required acceptance check fails. Warnings still require review; they are not an automatic approval.
 
 ## 1. Check the configuration
 
