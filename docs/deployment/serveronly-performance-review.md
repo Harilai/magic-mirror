@@ -3,7 +3,7 @@
 **Repository:** `Harilai/magic-mirror`  
 **Branch:** `feature/magicmirror-serveronly-deployment`  
 **Reviewed:** 2026-11-13  
-**Scope:** static source/configuration review for the current Serveronly + Chromium deployment. No target board was available; no performance result or hardware certification is claimed.
+**Scope:** static source/configuration review, implementation of the initial Meteosat/Spotify/resource-monitor optimizations, and CI validation. No target board was available; no device-level performance result or hardware certification is claimed.
 
 ## Executive assessment
 
@@ -90,7 +90,7 @@ Run the full configured mirror on the exact OS and board and record:
 
 Use `MemAvailable`, not just the `free` column from `free`, to assess headroom. A cached Linux filesystem page is reclaimable and should not be mistaken for an application memory leak.
 
-The new `server:resource-monitor` command samples Linux `MemAvailable`/swap, PSS/RSS for matching MagicMirror, Chromium and Meteosat worker processes, and available Linux thermal zones. It records samples, peak PSS and peak temperature by sensor to a mode-0600 JSON report. The monitor is a sampling aid: it does not yet measure cgroup pressure, CPU utilisation, disk I/O, GPU memory or actual clock throttling. The `server:device-check` remains a compatibility preflight, not a performance certification.
+The new `server:resource-monitor` command samples Linux `MemAvailable`/swap, PSS/RSS for matching MagicMirror, Chromium and Meteosat worker processes, and available Linux thermal zones. It records samples, peak PSS and peak temperature by sensor to a mode-0600 JSON report. The sampler excludes its own PID from target totals. The monitor is a sampling aid: it does not yet measure cgroup pressure, CPU utilisation, disk I/O, GPU memory or actual clock throttling. The `server:device-check` remains a compatibility preflight, not a performance certification.
 
 ## Hardware implications
 
@@ -173,3 +173,12 @@ Therefore, use **Raspberry Pi 3B+ (1 GB)** as the first split-client test candid
 Used listings around €35 were found for Pi 3B+ units supplied with fan cases and/or PSU. Passive-case listings were seen around €52. The current search has not established a fully equipped, passive, silent Pi 3B+ kit at or below €40. Treat the 35 € fan-cooled bundle only as a price lead, not a recommendation for this mirror.
 
 The split-server layout remains the more promising route for a compact client, but it does not make the Zero 2 W a safe purchase. A 1 GB client gives more margin; full UI and overnight tests remain mandatory.
+
+
+## Current software validation status
+
+At commit `af89490551f42ce5d01a551626608946c4ef1aaf`, GitHub Actions on Ubuntu 24.04 with Node.js 22.22.2 passed:
+- 55/55 MMM-Meteosat tests, including downsampling, alpha-mask equivalence, streamed WMS downloads, bounded response sizes, abort cleanup, and overlay cache writes.
+- 14/14 standalone deployment tests, including PSS parsing, thermal-zone readings, monitor self-exclusion, remote kiosk URL validation, and readiness probing.
+
+This is CI validation on x86-64 Linux. It is not a 1080p browser visual test, ARM build test, physical thermal test, or overnight reliability test.
