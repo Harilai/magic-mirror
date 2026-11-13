@@ -15,6 +15,10 @@ on:
       - develop
     paths:
       - "modules/MMM-Meteosat/**"
+      - "scripts/serveronly-resource-monitor.js"
+      - "tests/standalone/**"
+      - "config/config.js"
+      - "package.json"
       - ".github/workflows/metosat-validation.yml"
   workflow_dispatch:
 
