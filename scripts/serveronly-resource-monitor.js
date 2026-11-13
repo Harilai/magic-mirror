@@ -90,7 +90,7 @@ function readThermalSensors(sysRoot = "/sys") {
   const thermalRoot = path.join(sysRoot, "class", "thermal");
   let entries;
   try {
-    entries = fs.readdirSync(thermalRoot).filter((entry) => /^thermal_zone\\d+$/.test(entry));
+    entries = fs.readdirSync(thermalRoot).filter((entry) => /^thermal_zone[0-9]+$/.test(entry));
   } catch {
     return [];
   }
