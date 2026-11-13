@@ -6,6 +6,9 @@ on:
       - feature/magicmirror-serveronly-deployment
     paths:
       - "modules/MMM-Meteosat/**"
+      - "scripts/serveronly-resource-monitor.js"
+      - "tests/standalone/**"
+      - "package.json"
       - ".github/workflows/metosat-validation.yml"
   pull_request:
     branches:
@@ -40,3 +43,9 @@ jobs:
 
       - name: Run Meteosat unit tests
         run: npm test --prefix modules/MMM-Meteosat
+
+      - name: Check resource monitor syntax
+        run: node --check scripts/serveronly-resource-monitor.js
+
+      - name: Run resource monitor unit tests
+        run: node --test tests/standalone/serveronly-resource-monitor.node-test.cjs
