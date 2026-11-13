@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 const { Readable } = require("stream");
-const { WmsRequestError, sanitiseLogText, parseTimeDimension, extractLatestLayerTime, readBodyWithLimit } = require("../src/sources/wms");
+const { WmsRequestError, sanitiseLogText, parseTimeDimension, extractLatestLayerTime, readBodyWithLimit, streamResponseToFile } = require("../src/sources/wms");
 
 const fixtures = path.join(__dirname, "fixtures");
 
@@ -41,4 +41,72 @@ test("upstream log text is single-line, stripped and bounded", () => {
   assert.equal(value.includes("\n"), false);
   assert.equal(value.includes("\u0000"), false);
   assert.ok(value.length <= 18);
+});
+
+
+test("stream response writes one file and calculates its hash incrementally", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "mmm-meteosat-stream-"));
+  const destination = path.join(root, "image.bin");
+  const body = Buffer.from("streamed-image-content");
+  try {
+    const response = {
+      headers: new Headers({ "content-length": String(body.length) }),
+      body: Readable.toWeb(Readable.from([body.subarray(0, 7), body.subarray(7)]))
+    };
+    const result = await streamResponseToFile(response, destination, body.length);
+    assert.equal(result.bytes, body.length);
+    assert.equal(result.hash, require("crypto").createHash("sha256").update(body).digest("hex"));
+    assert.deepEqual(fs.readFileSync(destination), body);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("stream response rejects declared and actual oversize bodies without leaving files", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "mmm-meteosat-stream-"));
+  try {
+    const declaredFile = path.join(root, "declared.bin");
+    const declared = {
+      headers: new Headers({ "content-length": "7" }),
+      body: Readable.from([Buffer.from("1234567")])
+    };
+    await assert.rejects(
+      streamResponseToFile(declared, declaredFile, 6),
+      (error) => error instanceof WmsRequestError && error.retryable === false
+    );
+    assert.equal(fs.existsSync(declaredFile), false);
+
+    const streamedFile = path.join(root, "streamed.bin");
+    const streamed = {
+      headers: new Headers(),
+      body: Readable.from([Buffer.from("1234"), Buffer.from("5678")])
+    };
+    await assert.rejects(
+      streamResponseToFile(streamed, streamedFile, 6),
+      (error) => error instanceof WmsRequestError && error.retryable === false
+    );
+    assert.equal(fs.existsSync(streamedFile), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("stream response removes partial files when aborted", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "mmm-meteosat-stream-"));
+  const destination = path.join(root, "aborted.bin");
+  const controller = new AbortController();
+  const body = Readable.from((async function* () {
+    yield Buffer.from("first chunk");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    yield Buffer.from("second chunk");
+  })());
+
+  try {
+    const operation = streamResponseToFile({ headers: new Headers(), body }, destination, 100, { signal: controller.signal });
+    setTimeout(() => controller.abort(), 10);
+    await assert.rejects(operation, (error) => error.name === "AbortError");
+    assert.equal(fs.existsSync(destination), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
