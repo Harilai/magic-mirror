@@ -8,6 +8,7 @@ on:
       - "modules/MMM-Meteosat/**"
       - "scripts/serveronly-resource-monitor.js"
       - "scripts/serveronly-kiosk.js"
+      - "scripts/serveronly-device-check.js"
       - "tests/standalone/**"
       - "deploy/systemd/**"
       - "docs/deployment/**"
@@ -59,6 +60,7 @@ jobs:
         run: |
           node --check scripts/serveronly-resource-monitor.js
           node --check scripts/serveronly-kiosk.js
+          node --check scripts/serveronly-device-check.js
 
       - name: Run deployment utility unit tests
-        run: node --test tests/standalone/serveronly-resource-monitor.node-test.cjs tests/standalone/serveronly-kiosk.node-test.cjs
+        run: node --test tests/standalone/serveronly-resource-monitor.node-test.cjs tests/standalone/serveronly-kiosk.node-test.cjs tests/standalone/serveronly-security.node-test.cjs
