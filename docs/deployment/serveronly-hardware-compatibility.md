@@ -25,7 +25,8 @@ Important qualifications:
 
 | Candidate | Architecture / memory context | Assessment for this deployment | Current decision |
 |---|---|---|---|
-| Raspberry Pi 4, 2 GB | ARM64-capable; 2 GB RAM | Good architectural match for 64-bit Raspberry Pi OS, Node 22 ARM64, Chromium and `sharp` ARM64. Memory and sustained kiosk performance still need measurement. | **Preferred Pi candidate for a real-device test.** |
+| Raspberry Pi 4, 4 GB | ARM64-capable; 4 GB RAM | Good architectural match for 64-bit Raspberry Pi OS, Node 22 ARM64, Chromium and `sharp` ARM64. Compact 85 × 56 mm board, but fanless thermal behaviour in the final enclosure and memory pressure still require measurement. | **Software reference candidate; used prices found exceed the €40 target.** |
+| Raspberry Pi 4, 2 GB | ARM64-capable; 2 GB RAM | Same software compatibility, but memory headroom for Chromium and all configured modules is unproven. | Do not approve before full-workload PSS measurement. |
 | Raspberry Pi 3 B+ | ARM64-capable but only 1 GB RAM | A 64-bit OS is architecturally possible. A 32-bit OS would require Serveronly rather than Electron 44 and `glibc` >=2.36 for the `sharp` prebuilt. Low RAM and older CPU make Chromium + all configured modules a performance risk. | Not the preferred purchase; do not rule out solely by ISA. |
 | HP T520 thin client | x86_64; previously considered 2 GB RAM / 32 GB SSD configuration | x64 Node/Electron/Chromium/`sharp` compatibility is the simplest software path. Confirm actual RAM, storage health, graphics output/adaptor, and distro support on the exact unit. | Strong low-cost x86 candidate if the exact listing is still available and hardware checks pass. |
 | Le Potato / AML-S905X-CC | ARM64-capable; 2 GB variants considered | CPU architecture is suitable, but the exact maintained distro image, Chromium package/graphics stack, libc version and native package install must be validated for the chosen image. | Conditional; do not buy based on ARM64 capability alone. |
@@ -131,13 +132,31 @@ The target device will be mounted behind the mirror glass. The hardware selectio
 
 | Candidate | Confirmed characteristics | Remaining risks |
 |---|---|---|
-| Dell Wyse 5070 Standard | Passive cooling reported by independent reviewers; 4-core J4105 or J5005 options, usually 4–8 GB RAM; 184 × 184 × 35.6 mm. | Large square footprint. Used listings frequently omit PSU, Wi-Fi option or storage. It is not the best physical fit behind a small display. |
-| Dell Wyse 3040 | Official 101.6 × 101.6 × 27.94 mm dimensions; quad-core Atom x5-Z8350; 2 GB soldered RAM and 8/16 GB eMMC. | RAM cannot be upgraded; 8/16 GB eMMC is too small for a comfortable Linux/Chromium installation. Treat only as a low-cost test unit, not a purchase recommendation. |
-| Fujitsu FUTRO S940 | Official product material describes fanless design; J5005 and 4/8 GB RAM configurations exist. | Need exact enclosure dimensions, ports, storage and power-supply bundle before selection. |
-| ARM64 SBC + passive enclosure | Small board footprint and fanless case possible. | Validate the exact OS image, accelerated Chromium, native `sharp`, 1080p output, Wi-Fi and thermal stability. |
+| Radxa ZERO 3W | Official dimensions 65 × 30 mm; RK3566 Cortex-A55; 1/2/4/8 GB RAM options; optional eMMC up to 64 GB; Micro-HDMI 1080p60; Wi-Fi 6. Vendor documents passive operation for light/moderate workloads and an 85°C thermal-control limit. | Best physical form factor found so far. However, a Radxa forum reports software-rendering fallback on Debian Bullseye due to the graphics stack; other reports suggest newer Ubuntu Chromium acceleration can work. The exact OS/browser stack must be tested. Spain listing prices observed were about €78 for 2 GB/16 GB and €104 for 4 GB/32 GB, above budget. |
+| Dell Wyse 5070 Standard | Passive cooling reported by independent reviewers; 4-core J4105 or J5005 options, usually 4–8 GB RAM; 184 × 184 × 35.6 mm. | Quiet and x86-64 capable, but 184 mm square and 35.6 mm thick. Used listings often omit PSU, Wi-Fi or storage; poor fit for a shallow rear cavity. |
+| Dell Wyse 3040 | Official 101.6 × 101.6 × 27.94 mm dimensions; quad-core Atom x5-Z8350; 2 GB soldered RAM and 8/16 GB eMMC; optional WLAN; dual DisplayPort. | Physically shallow, but RAM and eMMC are fixed and low. No native HDMI. Do not approve for Chromium + MagicMirror just because it is compact. |
+| Fujitsu FUTRO S940 | Fanless J5005 design, with 4/8 GB RAM options. Horizontal dimensions are 250 × 193 × 52 mm without foot; Fujitsu specifies 200 mm ventilation clearance. | Too bulky and deep for this installation despite passive cooling. Remove from the compact shortlist. |
+| ARM64 SBC + passive enclosure | Small board footprint and fanless case possible. | Validate the exact OS image, Chromium graphics acceleration, native `sharp`, 1080p output, Wi-Fi and thermal stability. |
 
-The Wyse 5070's standard enclosure is fully passive in independent testing, with reported headless idle draw around 2.7 W and measured load around 13.7 W in one review. These are example measurements, not guaranteed limits. Its physical size may make it unsuitable for a shallow mirror cavity despite its technical appeal.
+The Wyse 5070's standard enclosure is fully passive in independent testing, with user measurements around 2.2–5.1 W idle and up to roughly 14 W in one report. These are configuration-dependent measurements, not guaranteed limits. Its square footprint makes it unsuitable for a shallow mirror cavity despite its technical appeal.
 
 The 3040 is much shallower but its RAM and eMMC are soldered. It must not be selected just because it is inexpensive or compact.
 
+The Radxa ZERO 3W is the strongest physical fit identified so far: 65 × 30 mm is dramatically smaller than any thin client. However, its software-rendering history on earlier Debian images and current Spanish pricing prevent recommending it at this point. The board is a test candidate only, not an approved purchase.
+
+The S940 should not be treated as a low-profile unit: although it is fanless, its 52 mm horizontal height and specified ventilation clearance are incompatible with the shallow-cavity objective.
+
 **Purchase status:** no device is approved yet. The compact/fanless constraint is now a first-class selection criterion, not an optional preference.
+
+
+## 7. Current market and forum evidence (13 November 2026)
+
+The hardware filter has been tightened to include acoustic and mechanical fit. Examples found in current second-hand listings:
+
+- Milanuncios results for Raspberry Pi 4 4 GB showed listings around €100; eBay Spain showed a used 4 GB model with case around €75. Both exceed the user's €40 ceiling. These are snapshots of listings, not appraisals of every used unit.
+- The Wyse 5070 remains a quiet x86 platform, but it is roughly 184 mm square and 35.6 mm thick. It is technically suitable but mechanically unattractive for a narrow mirror cavity.
+- The Dell Wyse 3040 has a very shallow 27.94 mm chassis, but only 2 GB soldered RAM and 8/16 GB eMMC according to Dell's product guide. It is not a good performance-risk trade.
+- The Fujitsu S940 is fanless, but its own manual lists 52 mm horizontal height and calls for 200 mm clearance for ventilation. It is not a compact behind-glass recommendation.
+- The Radxa ZERO 3W is a genuine small-format 65 × 30 mm board with 1–8 GB RAM variants and Micro-HDMI. Its vendor design brief permits no additional cooling for light-to-moderate loads, but sustained load or elevated ambient temperature can require supplementary heatsinking. A Radxa forum thread documents earlier Debian Bullseye graphics acceleration problems; do not assume the Chromium compositor is hardware-accelerated without checking `chrome://gpu` on the exact OS image.
+
+**Updated decision:** the most plausible physical form factor is a passively cooled ARM64 SBC with at least 4 GB RAM and reliable eMMC or high-endurance storage, but no such complete configuration has yet been verified under €40 in Spain. The compact board candidates currently found are over budget. Do not buy an underspecified or low-memory board to satisfy the price ceiling.
