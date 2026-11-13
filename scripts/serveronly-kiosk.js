@@ -43,6 +43,32 @@ function getMirrorUrl(config) {
   return url;
 }
 
+function getRemoteMirrorUrl(value) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new TypeError("MM_KIOSK_URL must be a non-empty HTTP(S) URL.");
+  }
+
+  let url;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new TypeError("MM_KIOSK_URL is not a valid absolute URL.");
+  }
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new TypeError("MM_KIOSK_URL must use http:// or https://.");
+  }
+  if (!url.hostname || url.username || url.password) {
+    throw new TypeError("MM_KIOSK_URL must contain a hostname and must not contain credentials.");
+  }
+  if (url.search || url.hash) {
+    throw new TypeError("MM_KIOSK_URL must not contain a query string or fragment.");
+  }
+
+  url.pathname = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
+  return url;
+}
+
 function requestReady(url) {
   const transport = url.protocol === "https:" ? https : http;
   return new Promise((resolve) => {
@@ -67,12 +93,12 @@ async function waitForServer(url) {
     }
     await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
   }
-  fail(`MagicMirror did not become reachable at ${url.href} within ${timeout} ms. Check magicmirror-server.service logs.`);
+  fail(`MagicMirror did not become reachable at ${url.href} within ${timeout} ms. Check the server service and network connection.`);
 }
 
 async function main() {
-  const config = loadConfig();
-  const url = getMirrorUrl(config);
+  const remoteUrl = process.env.MM_KIOSK_URL;
+  const url = remoteUrl ? getRemoteMirrorUrl(remoteUrl) : getMirrorUrl(loadConfig());
   await waitForServer(url);
 
   const browser = process.env.MM_BROWSER_BIN || "chromium";
@@ -108,4 +134,8 @@ async function main() {
   });
 }
 
-main().catch((error) => fail(error.message));
+if (require.main === module) {
+  main().catch((error) => fail(error.message));
+}
+
+module.exports = { getMirrorUrl, getRemoteMirrorUrl, requestReady, waitForServer };
