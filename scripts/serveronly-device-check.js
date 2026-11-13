@@ -35,6 +35,27 @@ function parseOsRelease(content) {
 	return values;
 }
 
+function parseCpuFlags(content) {
+	const match = /^\s*(?:flags|Features)\s*:\s*(.+)$/im.exec(String(content));
+	if (!match) return null;
+	return new Set(match[1].trim().split(/\s+/).filter(Boolean));
+}
+
+function checkSharpCpuFeatures(architecture, cpuInfo, results) {
+	if (!["x64", "ia32"].includes(architecture)) return true;
+	const flags = parseCpuFlags(cpuInfo);
+	if (!flags) {
+		add(results, "WARN", "sharp-cpu-features", "Could not read x86 CPU flags from /proc/cpuinfo; the Sharp native smoke test remains the compatibility check.");
+		return true;
+	}
+	if (!flags.has("sse4_2")) {
+		add(results, "FAIL", "sharp-cpu-features", "This x86 CPU does not expose SSE4.2, required by the project's prebuilt Sharp binary.");
+		return false;
+	}
+	add(results, "PASS", "sharp-cpu-features", "SSE4.2 is available for the x86 Sharp native binary.");
+	return true;
+}
+
 function run(command, args = [], options = {}) {
 	return spawnSync(command, args, {
 		encoding: "utf8",
@@ -233,7 +254,14 @@ async function collectDiagnostics() {
 	}
 
 	if (configuredModules.has("MMM-Meteosat")) {
-		await checkSharp(results);
+		const cpuInfo = platform === "linux" && fs.existsSync("/proc/cpuinfo")
+			? fs.readFileSync("/proc/cpuinfo", "utf8")
+			: "";
+		if (checkSharpCpuFeatures(architecture, cpuInfo, results)) {
+			await checkSharp(results);
+		} else {
+			add(results, "SKIP", "sharp", "Sharp was not loaded because the x86 CPU lacks the required SSE4.2 instruction set.");
+		}
 	} else {
 		add(results, "SKIP", "sharp", "MMM-Meteosat is not enabled in the loaded config.");
 	}
@@ -283,4 +311,4 @@ if (require.main === module) {
 	});
 }
 
-module.exports = { parseVersion, isSupportedNode, parseOsRelease, checkSecurityConfig, collectDiagnostics };
+module.exports = { parseVersion, isSupportedNode, parseOsRelease, parseCpuFlags, checkSharpCpuFeatures, checkSecurityConfig, collectDiagnostics };
