@@ -4,6 +4,8 @@ const crypto = require("crypto");
 const fs = require("fs");
 const { inspectImage } = require("../sharpWorkerClient");
 const { performance } = require("perf_hooks");
+const { Readable, Transform } = require("node:stream");
+const { pipeline } = require("node:stream/promises");
 const { createTemporaryPath } = require("../cache");
 
 const ENDPOINT = "https://view.eumetsat.int/geoserver/wms";
@@ -70,6 +72,61 @@ async function readBodyWithLimit(response, maxBytes) {
     chunks.push(chunk);
   }
   return Buffer.concat(chunks, total);
+}
+async function streamResponseToFile(response, destination, maxBytes, { signal = null } = {}) {
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw new WmsRequestError(`Response exceeds maximum size of ${maxBytes} bytes.`, {
+      retryable: false,
+      details: { declaredLength, maxBytes }
+    });
+  }
+  if (!response.body) {
+    throw new WmsRequestError("Response has no body.", { retryable: true });
+  }
+
+  const hash = crypto.createHash("sha256");
+  let total = 0;
+  const meter = new Transform({
+    transform(chunk, encoding, callback) {
+      total += chunk.length;
+      if (total > maxBytes) {
+        callback(new WmsRequestError(`Response exceeded maximum size of ${maxBytes} bytes.`, {
+          retryable: false,
+          details: { receivedBytes: total, maxBytes }
+        }));
+        return;
+      }
+      hash.update(chunk);
+      callback(null, chunk);
+    }
+  });
+  const body = typeof response.body.pipe === "function" ? response.body : Readable.fromWeb(response.body);
+  const destinationStream = fs.createWriteStream(destination, { flags: "wx", mode: 0o644 });
+
+  try {
+    if (signal) await pipeline(body, meter, destinationStream, { signal });
+    else await pipeline(body, meter, destinationStream);
+  } catch (error) {
+    fs.rmSync(destination, { force: true });
+    if (signal?.aborted || error.name === "AbortError" || error.code === "ABORT_ERR") {
+      const aborted = new Error("Response streaming aborted.");
+      aborted.name = "AbortError";
+      throw aborted;
+    }
+    throw error;
+  }
+
+  return { bytes: total, hash: hash.digest("hex") };
+}
+
+async function discardResponseBody(response) {
+  try {
+    if (typeof response.body?.cancel === "function") await response.body.cancel();
+    else response.body?.destroy?.();
+  } catch {
+    // The response is already closing; there is no additional recovery work.
+  }
 }
 
 function buildUrl(profile, size, imageTime = null) {
@@ -179,15 +236,21 @@ async function downloadWmsImage({ profile, targetFile, tempFile, size, userAgent
 
   const requestSignal = combineSignals(signal, REQUEST_TIMEOUT);
   let response;
-  let buffer;
+  let streamed;
+  let uniqueTempFile = null;
   try {
     response = await fetch(url, {
       headers: { Accept: "image/png,image/*;q=0.9", "User-Agent": userAgent },
       signal: requestSignal.signal
     });
-    buffer = await readBodyWithLimit(response, MAX_IMAGE_BYTES);
+    if (!response.ok) {
+      await discardResponseBody(response);
+    } else {
+      uniqueTempFile = createTemporaryPath(tempFile);
+      streamed = await streamResponseToFile(response, uniqueTempFile, MAX_IMAGE_BYTES, { signal: requestSignal.signal });
+    }
   } catch (error) {
-    if (error instanceof WmsRequestError) throw error;
+    if (error instanceof WmsRequestError || error.name === "AbortError") throw error;
     throw new WmsRequestError(`EUMETView WMS request failed: ${sanitiseLogText(error.message)}`, {
       retryable: !signal?.aborted,
       details: { request: "GetMap", durationMs: Math.round(performance.now() - started) }
@@ -199,65 +262,69 @@ async function downloadWmsImage({ profile, targetFile, tempFile, size, userAgent
   const durationMs = Math.round(performance.now() - started);
   const contentType = response.headers.get("content-type");
   if (!response.ok) {
-    const preview = sanitiseLogText(buffer.toString("utf8"));
-    throw new WmsRequestError(`EUMETView WMS request failed: HTTP ${response.status}${preview ? ` - ${preview}` : ""}`, {
+    throw new WmsRequestError(`EUMETView WMS request failed: HTTP ${response.status}.`, {
       status: response.status,
       retryable: response.status === 429 || response.status >= 500,
-      details: { request: "GetMap", durationMs, contentType, bodyPreview: preview }
-    });
-  }
-  if (buffer.length < MINIMUM_IMAGE_SIZE) {
-    throw new WmsRequestError(`EUMETView returned an unusually small image: ${buffer.length} bytes.`, {
-      retryable: true, details: { request: "GetMap", durationMs, bytes: buffer.length, minimumBytes: MINIMUM_IMAGE_SIZE }
+      details: { request: "GetMap", durationMs, contentType }
     });
   }
 
-  const uniqueValidationFile = createTemporaryPath(tempFile);
-  let metadata;
   try {
-    fs.writeFileSync(uniqueValidationFile, buffer, { mode: 0o644 });
-    metadata = await inspectImage(uniqueValidationFile, { signal });
-  } catch (error) {
-    if (error.name === "AbortError") throw error;
-    throw new WmsRequestError(`EUMETView returned an unreadable image: ${sanitiseLogText(error.message)}`, {
-      retryable: true, details: { request: "GetMap", durationMs, bytes: buffer.length }
-    });
-  } finally {
-    fs.rmSync(uniqueValidationFile, { force: true });
-  }
-  if (!["png", "jpeg"].includes(metadata.format)) {
-    throw new WmsRequestError(`Unexpected WMS image format: ${metadata.format || "unknown"}.`, {
-      retryable: true, details: { request: "GetMap", format: metadata.format || null }
-    });
-  }
-  if ((metadata.width || 0) * (metadata.height || 0) > MAX_INPUT_PIXELS) {
-    throw new WmsRequestError("WMS image pixel dimensions exceed the configured safety limit.", { retryable: false });
-  }
+    if (streamed.bytes < MINIMUM_IMAGE_SIZE) {
+      throw new WmsRequestError(`EUMETView returned an unusually small image: ${streamed.bytes} bytes.`, {
+        retryable: true,
+        details: { request: "GetMap", durationMs, bytes: streamed.bytes, minimumBytes: MINIMUM_IMAGE_SIZE }
+      });
+    }
 
-  if (isActive && !isActive()) {
-    const error = new Error("Obsolete download discarded.");
-    error.name = "AbortError";
-    throw error;
-  }
+    let metadata;
+    try {
+      metadata = await inspectImage(uniqueTempFile, { signal });
+    } catch (error) {
+      if (error.name === "AbortError") throw error;
+      throw new WmsRequestError(`EUMETView returned an unreadable image: ${sanitiseLogText(error.message)}`, {
+        retryable: true,
+        details: { request: "GetMap", durationMs, bytes: streamed.bytes }
+      });
+    }
 
-  const hash = crypto.createHash("sha256").update(buffer).digest("hex");
-  const uniqueTempFile = createTemporaryPath(tempFile);
-  try {
-    fs.writeFileSync(uniqueTempFile, buffer, { mode: 0o644 });
+    if (!["png", "jpeg"].includes(metadata.format)) {
+      throw new WmsRequestError(`Unexpected WMS image format: ${metadata.format || "unknown"}.`, {
+        retryable: true,
+        details: { request: "GetMap", format: metadata.format || null }
+      });
+    }
+    if ((metadata.width || 0) * (metadata.height || 0) > MAX_INPUT_PIXELS) {
+      throw new WmsRequestError("WMS image pixel dimensions exceed the configured safety limit.", { retryable: false });
+    }
+
     if (isActive && !isActive()) {
       const error = new Error("Obsolete download discarded.");
       error.name = "AbortError";
       throw error;
     }
+
     fs.renameSync(uniqueTempFile, targetFile);
+    debug?.("GetMap response", {
+      status: response.status, contentType, bytes: streamed.bytes, durationMs,
+      format: metadata.format, width: metadata.width, height: metadata.height,
+      channels: metadata.channels, hasAlpha: metadata.hasAlpha, sha256: streamed.hash
+    });
+    return {
+      hash: streamed.hash,
+      bytes: streamed.bytes,
+      imageTime: resolvedImageTime,
+      responseTime: response.headers.get("last-modified") || response.headers.get("date") || null,
+      downloadedAt: new Date().toISOString(),
+      source: "EUMETSat EUMETView WMS",
+      layer: profile.layer,
+      durationMs,
+      metadata
+    };
   } finally {
-    fs.rmSync(uniqueTempFile, { force: true });
+    if (uniqueTempFile) fs.rmSync(uniqueTempFile, { force: true });
   }
-
-  debug?.("GetMap response", { status: response.status, contentType, bytes: buffer.length, durationMs, format: metadata.format, width: metadata.width, height: metadata.height, channels: metadata.channels, hasAlpha: metadata.hasAlpha, sha256: hash });
-  return { hash, bytes: buffer.length, imageTime: resolvedImageTime, responseTime: response.headers.get("last-modified") || response.headers.get("date") || null, downloadedAt: new Date().toISOString(), source: "EUMETSAT EUMETView WMS", layer: profile.layer, durationMs, metadata };
 }
-
 module.exports = {
   downloadWmsImage,
   fetchLatestImageTime,
@@ -265,5 +332,6 @@ module.exports = {
   sanitiseLogText,
   parseTimeDimension,
   extractLatestLayerTime,
-  readBodyWithLimit
+  readBodyWithLimit,
+  streamResponseToFile
 };
