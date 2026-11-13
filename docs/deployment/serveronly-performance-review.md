@@ -138,7 +138,7 @@ The compute unit is intended to sit behind the mirror glass. Acoustic output and
 On each Linux candidate, from the MagicMirror checkout run:
 
 ```bash
-npm run benchmark --prefix modules/MMM-Meteosat -- --source-size=1800 --render-size=700 --repeat=3
+npm run server:benchmark-meteosat -- --source-size=1800 --render-size=700 --repeat=3
 ```
 
 The benchmark creates a synthetic 1800 × 1800 PNG, invokes the real Sharp child worker, applies the same alpha mask and 700 px render limit as the mirror, and reports:
