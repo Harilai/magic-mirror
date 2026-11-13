@@ -75,7 +75,8 @@
 		"test:ui": "vitest --ui",
 		"test:unit": "vitest run tests/unit",
 		"test:watch": "vitest",
-		"server:resource-monitor": "node scripts/serveronly-resource-monitor.js"
+		"server:resource-monitor": "node scripts/serveronly-resource-monitor.js",
+		"server:benchmark-meteosat": "npm run benchmark --prefix modules/MMM-Meteosat --"
 	},
 	"dependencies": {
 		"@fontsource/roboto": "^5.3.0",
