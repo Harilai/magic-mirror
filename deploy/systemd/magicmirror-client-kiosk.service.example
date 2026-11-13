@@ -1,0 +1,19 @@
+[Unit]
+Description=MagicMirror remote Chromium kiosk client
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/MagicMirror
+Environment=MM_BROWSER_BIN=chromium
+# Set the LAN URL of the separate MagicMirror server, including port and optional base path:
+Environment=MM_KIOSK_URL=http://192.168.25.10:8080/
+ExecStart=/usr/bin/env node scripts/serveronly-kiosk.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+KillMode=control-group
+
+[Install]
+WantedBy=default.target
