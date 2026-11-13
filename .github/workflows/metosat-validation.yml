@@ -58,7 +58,7 @@ jobs:
         run: npm test --prefix modules/MMM-Meteosat
 
       - name: Run target-device benchmark smoke test
-        run: npm run benchmark --prefix modules/MMM-Meteosat -- --source-size=600 --render-size=300 --repeat=1
+        run: npm run benchmark --prefix modules/MMM-Meteosat -- --source-size=1800 --render-size=700 --repeat=1
 
       - name: Check deployment script syntax
         run: |
