@@ -22,6 +22,7 @@ on:
       - "modules/MMM-Meteosat/**"
       - "scripts/serveronly-resource-monitor.js"
       - "scripts/serveronly-kiosk.js"
+      - "scripts/serveronly-device-check.js"
       - "tests/standalone/**"
       - "deploy/systemd/**"
       - "docs/deployment/**"
