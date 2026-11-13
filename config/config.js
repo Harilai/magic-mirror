@@ -77,7 +77,7 @@ const config = {
 				secureEndpoints: true, // Optional, see API/README.md
 				// Uncomment any of the following options to use them:
 				// customMenu: "custom_menu.json", // See "Custom Menu Items" below
-				apiKey: "964ec7b8-d8a8-4c76-9d9b-20561832e959", // See API/README.md for details
+				apiKey: process.env.MM_REMOTE_CONTROL_API_KEY || "", // Load from an untracked local environment file.
 				// classes: {}, // See "Custom Classes" below
 				showModuleApiMenu: false, // Disable the Module Controls menu
 				// showNotificationMenu: false, // Disable the Notification menu
