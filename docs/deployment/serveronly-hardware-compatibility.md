@@ -114,3 +114,30 @@ The architecture findings above were cross-checked against:
 - [Raspberry Pi OS architecture and desktop editions](https://www.raspberrypi.com/documentation/computers/os.html)
 
 **Decision:** prioritize a 64-bit OS on ARM64 hardware or an x86_64 thin client. Keep ARMv7 as a conditional Serveronly-only fallback, not a baseline for the Electron deployment. No physical compatibility, performance or thermal claim is made until the target board passes the acceptance checks.
+
+
+## 6. Acoustic and behind-glass installation requirements
+
+The target device will be mounted behind the mirror glass. The hardware selection must therefore include acoustic, mechanical and thermal criteria in addition to compute compatibility.
+
+- Prefer a **fanless, passively cooled** unit with no moving parts. Treat the external DC adapter separately; do not place it in a sealed, thermally insulated space.
+- Prefer **30 mm or less device depth**. 30–36 mm is a compromise. A small SBC with a passive heatsink case is physically preferable, but it must pass the full software acceptance test.
+- Avoid large 1L/1.5L and 184 mm-square thin-client enclosures if they consume too much of the rear cavity. Their low noise does not make them mechanically compact.
+- Do not mount a fanless case flush against insulating foam or the display back. Passive cooling needs clear air paths and thermal contact as specified by the device design.
+- Measure temperature and throttling with the panel powered and the actual rear cavity assembled. The temperature behind the glass can differ materially from an open-bench test.
+- Secure the DC lead, HDMI lead and network lead so the enclosure does not put mechanical load on the panel connector or mirror film.
+
+### New candidates to investigate
+
+| Candidate | Confirmed characteristics | Remaining risks |
+|---|---|---|
+| Dell Wyse 5070 Standard | Passive cooling reported by independent reviewers; 4-core J4105 or J5005 options, usually 4–8 GB RAM; 184 × 184 × 35.6 mm. | Large square footprint. Used listings frequently omit PSU, Wi-Fi option or storage. It is not the best physical fit behind a small display. |
+| Dell Wyse 3040 | Official 101.6 × 101.6 × 27.94 mm dimensions; quad-core Atom x5-Z8350; 2 GB soldered RAM and 8/16 GB eMMC. | RAM cannot be upgraded; 8/16 GB eMMC is too small for a comfortable Linux/Chromium installation. Treat only as a low-cost test unit, not a purchase recommendation. |
+| Fujitsu FUTRO S940 | Official product material describes fanless design; J5005 and 4/8 GB RAM configurations exist. | Need exact enclosure dimensions, ports, storage and power-supply bundle before selection. |
+| ARM64 SBC + passive enclosure | Small board footprint and fanless case possible. | Validate the exact OS image, accelerated Chromium, native `sharp`, 1080p output, Wi-Fi and thermal stability. |
+
+The Wyse 5070's standard enclosure is fully passive in independent testing, with reported headless idle draw around 2.7 W and measured load around 13.7 W in one review. These are example measurements, not guaranteed limits. Its physical size may make it unsuitable for a shallow mirror cavity despite its technical appeal.
+
+The 3040 is much shallower but its RAM and eMMC are soldered. It must not be selected just because it is inexpensive or compact.
+
+**Purchase status:** no device is approved yet. The compact/fanless constraint is now a first-class selection criterion, not an optional preference.
