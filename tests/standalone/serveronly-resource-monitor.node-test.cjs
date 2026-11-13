@@ -142,9 +142,9 @@ test("Linux thermal zones are reported in degrees Celsius", () => {
 
 test("summary reports peak target PSS and minimum system headroom", () => {
   const summary = summariseSamples([
-    { timestamp: "a", memory: { availableBytes: 100 }, target: { processCount: 2, pssBytes: 50, rssBytes: 80, processes: [] } },
-    { timestamp: "b", memory: { availableBytes: 70 }, target: { processCount: 3, pssBytes: 120, rssBytes: 160, processes: [{ pid: 1 }] } },
-    { timestamp: "c", memory: { availableBytes: 90 }, target: { processCount: 1, pssBytes: 110, rssBytes: 150, processes: [] } }
+    { timestamp: "a", memory: { availableBytes: 100 }, temperatures: [{ type: "cpu", temperatureC: 54 }], target: { processCount: 2, pssBytes: 50, rssBytes: 80, processes: [] } },
+    { timestamp: "b", memory: { availableBytes: 70 }, temperatures: [{ type: "cpu", temperatureC: 68.5 }, { type: "gpu", temperatureC: 56 }], target: { processCount: 3, pssBytes: 120, rssBytes: 160, processes: [{ pid: 1 }] } },
+    { timestamp: "c", memory: { availableBytes: 90 }, temperatures: [{ type: "cpu", temperatureC: 65 }], target: { processCount: 1, pssBytes: 110, rssBytes: 150, processes: [] } }
   ]);
   assert.equal(summary.sampleCount, 3);
   assert.equal(summary.peakTargetPssBytes, 120);
@@ -153,4 +153,5 @@ test("summary reports peak target PSS and minimum system headroom", () => {
   assert.equal(summary.peakTargetProcessCount, 3);
   assert.equal(summary.peakPssAt, "b");
   assert.deepEqual(summary.peakPssProcesses, [{ pid: 1 }]);
+  assert.deepEqual(summary.peakTemperaturesC, { cpu: 68.5, gpu: 56 });
 });
