@@ -135,6 +135,6 @@ After the server and Chromium kiosk are running, collect memory samples from a s
 npm run server:resource-monitor -- --duration=900 --interval=5 --output=resources.json
 ```
 
-The monitor records Linux `MemAvailable` and swap plus PSS/RSS for MagicMirror, Chromium and Meteosat worker processes. PSS is preferred when evaluating Chromium's multiple processes because it accounts proportionally for shared pages. The JSON report is created with owner-only permissions. Run the monitor while the mirror is doing representative work, including a Meteosat image refresh.
+The monitor records Linux `MemAvailable` and swap, PSS/RSS for MagicMirror, Chromium and Meteosat worker processes, and any temperature sensors exposed through `/sys/class/thermal`. PSS is preferred when evaluating Chromium's multiple processes because it accounts proportionally for shared pages. The JSON report is created with owner-only permissions. Run the monitor while the mirror is doing representative work, including a Meteosat image refresh.
 
-This is an observation tool, not an automatic pass/fail hardware benchmark. It does not currently measure CPU, GPU memory, cgroup pressure, storage latency or temperature; validate those separately on the exact board in its final enclosure.
+This is an observation tool, not an automatic pass/fail hardware benchmark. It does not currently measure CPU utilisation, GPU memory, cgroup pressure, storage latency or clock-throttling flags. Thermal sensors are best-effort; some boards may not expose them.
