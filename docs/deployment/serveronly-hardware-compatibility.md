@@ -50,7 +50,7 @@ This table compares technical fit, not current availability or price. No purchas
 - Electron-specific window commands are not Chromium kiosk controls.
 - The default monitor power commands in the inspected module use `wlopm`, which assumes a compatible Wayland environment. Provide and test custom commands for the selected display/session when necessary.
 - The default shutdown/reboot commands call `sudo shutdown`. Configure narrowly scoped sudo permissions only after reviewing the exact command and service user; do not grant general passwordless sudo.
-- Keep `secureEndpoints: true`, rotate the already-exposed API key, and correct/test the leading-whitespace whitelist entry before LAN deployment.
+- Keep `secureEndpoints: true`; load the new Remote Control key from the untracked `MM_REMOTE_CONTROL_API_KEY` environment file and rotate the legacy key committed in repository history before LAN deployment. The whitelist whitespace defect is corrected in the work branch; still verify the actual LAN subnet on the target device.
 
 ## 4. Target-device acceptance checks
 
@@ -191,12 +191,12 @@ A separate server/client deployment can materially change the physical board req
 
 Community evidence: one MagicMirror forum deployment reports roughly 194–206 MiB for a minimal Serveronly backend on a separate host and 240–248 MiB for DietPi + bare X + Chromium kiosk on the client. The author describes a small module set. This is not representative of the current project's full frontend or a guaranteed Zero 2 W RAM requirement.
 
-**Decision:** retain the Zero 2 W as an experimental display-client candidate only, provided a suitable always-on server already exists. Its tiny dimensions and price are attractive, but 512 MB RAM creates limited headroom. Validate the full module layout, 1920 × 1080 output, PSS, thermal zones, Wi-Fi reconnect behaviour and overnight stability before buying. If those checks fail, move to an ARM64 client with 2–4 GB RAM, or a thin x86 client mounted elsewhere.
+**Decision:** retain the Zero 2 W as a proof-of-concept only, not the first purchase. Its 512 MB RAM leaves too little headroom for the full configured frontend. With a separate always-on server, test a passively cooled Pi 3B+ (1 GB) first; then consider the Zero 2 W only if the complete frontend passes PSS, 1080p, thermal, Wi-Fi recovery and overnight tests.
 
 ### Current best hardware direction
 
-- **If a separate always-on server exists:** test a Raspberry Pi Zero 2 W as the display client first; it is the strongest size/price fit, not yet an approved device.
-- **If one device must do everything:** Fujitsu FUTRO S740 or Dell Wyse 5070 have the lower software risk, but are larger and more expensive. S740 is 36 mm thick (147 × 165 mm footprint without feet) and official guidance requests 100 mm ventilation clearance, which may be difficult in a closed mirror cavity.
+- **If a separate always-on server exists:** first test a passively cooled Raspberry Pi 3B+ (1 GB) as the Chromium-only client. Keep the Zero 2 W (512 MB) as a smaller experimental fallback, not a safe baseline.
+- **If one device must do everything:** the Minisforum Z83-F is the most compact fanless x86-64 mini-PC found (120 × 120 × 27 mm, 4 GB/64 GB), but current used prices start around €45–50 plus shipping. A Fujitsu FUTRO S740 or Dell Wyse 5070 offers a lower software-risk route, but the enclosures are substantially larger/deeper.
 - **Do not buy the 2 GB Le Potato bundle solely because its listing is €39.69:** it still needs reliable storage/power and the exact Linux/Chromium graphics stack has not been certified for the complete frontend.
 
 The selection remains conditional on the physical rear cavity, the availability of a separate server (for split mode), and actual workload measurements.
