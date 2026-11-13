@@ -194,6 +194,25 @@ Used listings around €35 were found for Pi 3B+ units supplied with fan cases a
 The split-server layout remains the more promising route for a compact client, but it does not make the Zero 2 W a safe purchase. A 1 GB client gives more margin; full UI and overnight tests remain mandatory.
 
 
+## Market check — compact and silent units (2026-11-14)
+
+A fresh listing check does not yet produce a complete, compact, fanless x86 unit at or below €40 delivered.
+
+| Device/listing | Configuration and price | Physical / technical fit | Decision |
+|---|---|---|---|
+| HP t430, Marktplaats | Celeron N4000, 4 GB RAM, 32 GB eMMC, original adapter; €50 plus €3.99 pickup-point delivery or €6.29 home delivery. | 135 × 135 × 32 mm, passive cooling in HP product literature, native HDMI, UHD 600. Wi-Fi must be confirmed on the exact SKU. | **Best single-device candidate**, but €53.99–€56.29 delivered exceeds the €40 ceiling. |
+| Dell Wyse 5070, eBay | J4105, 4 GB RAM, 16 GB eMMC, Wi-Fi; €41 + €9 shipping. | Fanless standard model, but 184 × 184 × 35.6 mm and only 16 GB storage in this listing. | Not preferred: larger footprint, tight storage and €50 delivered. |
+| HP t520, retailer listing | GX-212JC, 4 GB DDR3L, 32 GB M.2 flash; €39.68 before delivery. | 200 × 200 × 45.1 mm. Single SODIMM can be upgraded, but this is an older dual-core platform. The listing does not establish passive cooling or the final delivered cost. | Budget lead only; not approved for behind-glass use until noise, thermal and shipping details are verified. |
+| Fujitsu FUTRO S930, eBay | GX-424CC, 4 GB, no SSD and no power supply; €30 + €9 shipping. | 250 × 195 × 57 mm; DVI-I/DisplayPort rather than native HDMI. | Reject for this installation: too deep and incomplete. |
+
+Sources:
+- HP official t430 datasheet: https://h20195.www2.hp.com/v2/getpdf.aspx/4AA4-5632ENW.pdf
+- HP t430 4 GB / 32 GB / adapter listing: https://www.marktplaats.nl/v/computers-en-software/desktop-pc-s/m2452276202-hp-t430-thin-client-compacte-en-efficiente-mini-pc
+- Wyse 5070 used listings: https://www.ebay.es/b/Thin-clients-para-empresas/175702/bn_16588564
+- HP t520 configuration and dimensions: https://business.currys.co.uk/catalogue/computing/desktops/windows-desktops/hp-flexible-t520-tower-gx-212jc-1-2-ghz-4-gb-ssd-32-gb/P244800P
+
+**Purchase decision:** no purchase is approved. If the budget remains a hard €40 delivered, the most promising path is a split deployment only if an always-on backend host already exists: a small passive display client can then run Chromium only. Otherwise, the HP t430 is the most balanced compact single-device candidate found so far, but its current complete listing is over budget. Do not substitute a 2 GB / 16 GB t430 or a fan-cooled unit merely to hit the price target.
+
 ## Current software validation status
 
 At commit `45a4b1c039648fb8dc2af22f14a5e302722456ee`, GitHub Actions on Ubuntu 24.04 with Node.js 22.22.2 passed:
