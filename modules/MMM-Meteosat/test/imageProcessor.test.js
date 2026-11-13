@@ -6,7 +6,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const sharp = require("sharp");
-const { processImage, getGeometry, buildMask } = require("../src/imageProcessor");
+const { processImage, getGeometry, buildMask, applyMaskToRgba } = require("../src/imageProcessor");
 
 const fixtures = path.join(__dirname, "fixtures");
 
@@ -79,5 +79,73 @@ test("obsolete processing results are discarded", async () => {
     assert.equal(fs.readdirSync(root).some((name) => name.includes(".tmp.")), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("render size downsamples output while preserving the source cache", async () => {
+  const root = workspace();
+  const sourceFile = path.join(fixtures, "opaque-50x50.png");
+  const targetFile = path.join(root, "rendered.png");
+  try {
+    const result = await processImage({
+      sourceFile,
+      targetFile,
+      tempFile: path.join(root, "rendered.png.tmp"),
+      renderSize: 25
+    });
+    const metadata = await sharp(targetFile).metadata();
+    assert.equal(result.width, 25);
+    assert.equal(result.height, 25);
+    assert.equal(result.renderSize, 25);
+    assert.equal(metadata.width, 25);
+    assert.equal(metadata.height, 25);
+    assert.equal(fs.statSync(sourceFile).size > 0, true);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("render size never upscales a source image", async () => {
+  const root = workspace();
+  const sourceFile = path.join(fixtures, "opaque-50x50.png");
+  const targetFile = path.join(root, "rendered.png");
+  try {
+    const result = await processImage({
+      sourceFile,
+      targetFile,
+      tempFile: path.join(root, "rendered.png.tmp"),
+      renderSize: 100
+    });
+    assert.equal(result.width, 50);
+    assert.equal(result.height, 50);
+    assert.equal(result.renderSize, 50);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("in-place alpha masking matches the mask helper and preserves RGB bytes", () => {
+  const width = 37;
+  const height = 29;
+  const alpha = Buffer.from({ length: width * height }, (_, index) => (index * 37) % 256);
+  const geometry = getGeometry(width, height);
+  const expectedMask = buildMask(width, height, geometry, alpha);
+  const rgba = Buffer.alloc(width * height * 4);
+
+  for (let index = 0; index < width * height; index += 1) {
+    rgba[index * 4] = (index * 13) % 256;
+    rgba[index * 4 + 1] = (index * 17) % 256;
+    rgba[index * 4 + 2] = (index * 23) % 256;
+    rgba[index * 4 + 3] = alpha[index];
+  }
+
+  const originalRgb = Buffer.from(rgba);
+  applyMaskToRgba(rgba, width, height, geometry);
+
+  for (let index = 0; index < width * height; index += 1) {
+    assert.equal(rgba[index * 4], originalRgb[index * 4]);
+    assert.equal(rgba[index * 4 + 1], originalRgb[index * 4 + 1]);
+    assert.equal(rgba[index * 4 + 2], originalRgb[index * 4 + 2]);
+    assert.equal(rgba[index * 4 + 3], expectedMask[index]);
   }
 });
