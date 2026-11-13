@@ -11,6 +11,7 @@ const {
   parseMemoryInfo,
   parseSmapsRollup,
   parseStatusRss,
+  readThermalSensors,
   isTargetProcess,
   readProcessMemory,
   collectSample,
@@ -114,6 +115,26 @@ test("RSS fallback remains visible when smaps_rollup is unreadable", () => {
     assert.equal(processInfo.memorySource, "status-rss-fallback");
     assert.equal(processInfo.pssBytes, null);
     assert.equal(processInfo.rssBytes, 1234 * 1024);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Linux thermal zones are reported in degrees Celsius", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "serveronly-thermal-"));
+  try {
+    const thermalRoot = path.join(root, "class", "thermal");
+    fs.mkdirSync(path.join(thermalRoot, "thermal_zone0"), { recursive: true });
+    fs.mkdirSync(path.join(thermalRoot, "thermal_zone1"), { recursive: true });
+    fs.writeFileSync(path.join(thermalRoot, "thermal_zone0", "type"), "cpu-thermal\n");
+    fs.writeFileSync(path.join(thermalRoot, "thermal_zone0", "temp"), "67500\n");
+    fs.writeFileSync(path.join(thermalRoot, "thermal_zone1", "type"), "wifi-thermal\n");
+    fs.writeFileSync(path.join(thermalRoot, "thermal_zone1", "temp"), "42500\n");
+
+    assert.deepEqual(readThermalSensors(root), [
+      { zone: "thermal_zone0", type: "cpu-thermal", temperatureC: 67.5 },
+      { zone: "thermal_zone1", type: "wifi-thermal", temperatureC: 42.5 }
+    ]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
