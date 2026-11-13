@@ -136,6 +136,7 @@ The target device will be mounted behind the mirror glass. The hardware selectio
 | Dell Wyse 5070 Standard | Passive cooling reported by independent reviewers; 4-core J4105 or J5005 options, usually 4–8 GB RAM; 184 × 184 × 35.6 mm. | Quiet and x86-64 capable, but 184 mm square and 35.6 mm thick. Used listings often omit PSU, Wi-Fi or storage; poor fit for a shallow rear cavity. |
 | Dell Wyse 3040 | Official 101.6 × 101.6 × 27.94 mm dimensions; quad-core Atom x5-Z8350; 2 GB soldered RAM and 8/16 GB eMMC; optional WLAN; dual DisplayPort. | Physically shallow, but RAM and eMMC are fixed and low. No native HDMI. Do not approve for Chromium + MagicMirror just because it is compact. |
 | Fujitsu FUTRO S940 | Fanless J5005 design, with 4/8 GB RAM options. Horizontal dimensions are 250 × 193 × 52 mm without foot; Fujitsu specifies 200 mm ventilation clearance. | Too bulky and deep for this installation despite passive cooling. Remove from the compact shortlist. |
+| Orange Pi Zero 3 | 50 × 55 mm; Allwinner H618 quad-core Cortex-A53 ARM64; 1/1.5/2/4 GB LPDDR4 options; Mali-G31; Wi-Fi 5/BT 5; Gigabit Ethernet; Micro-HDMI; 5 V/3 A input. The official manual exposes CPU/GPU/DDR thermal zones through `/sys/class/thermal`. | Excellent footprint and fanless SBC topology, but 1.5 GB and 2 GB retail listings found around €43 and €51 respectively; 4 GB around €64. A MagicMirror user reports Chromium kiosk working in landscape on DietPi, but a 90° portrait rotation caused severe frame-rate collapse (about 2 FPS). Another report describes long-run Chromium instability. | Compact test candidate only; not approved for this project's full configuration. |
 | ARM64 SBC + passive enclosure | Small board footprint and fanless case possible. | Validate the exact OS image, Chromium graphics acceleration, native `sharp`, 1080p output, Wi-Fi and thermal stability. |
 
 The Wyse 5070's standard enclosure is fully passive in independent testing, with user measurements around 2.2–5.1 W idle and up to roughly 14 W in one report. These are configuration-dependent measurements, not guaranteed limits. Its square footprint makes it unsuitable for a shallow mirror cavity despite its technical appeal.
@@ -215,3 +216,17 @@ The Raspberry Pi 3B+ is therefore the more conservative client-only candidate:
 Independent kiosk project evidence: a recent lightweight kiosk project lists the Pi 3B+ (1 GB) as its tested platform and recommends a heatsink for continuous operation. It also notes software rendering on this generation; expect less compositor headroom than on a newer GPU. A local second-hand listing around €35 includes a fan and PSU, while another Vinted listing around €35 includes a fan case and microSD. A passively cooled Vinted listing was around €52, above the target. Therefore **there is not yet a complete, silent Pi 3B+ kit verified at or below €40**.
 
 **Updated decision:** if a separate always-on server is available, prefer testing a passively cooled Pi 3B+ client before the 512 MB Zero 2 W. Its 1 GB RAM is the safer starting point under Raspberry Pi's own kiosk guidance. Neither is approved until the full 1920 × 1080 mirror passes memory, temperature, network recovery and overnight tests. If the display client must also run Raspotify/audio processing, include that workload in the benchmark.
+
+
+### Orange Pi Zero 3 evidence and constraints
+
+The Orange Pi Zero 3 is now included because its 50 × 55 mm PCB is one of the smallest HDMI-capable boards in this comparison. The official user manual lists H618 Cortex-A53 ARM64, Mali-G31, RAM SKUs up to 4 GB, Wi-Fi 5, Gigabit Ethernet, Micro-HDMI and 5 V/3 A power. It also documents CPU, DDR and GPU thermal readings through Linux thermal zones, which the resource monitor can sample.
+
+Community evidence is mixed rather than a blanket pass:
+- A MagicMirror forum user ran DietPi and Chromium kiosk; the display worked in landscape, but forcing 90° portrait rotation reduced the frame rate to roughly 2 FPS.
+- A separate DietPi kiosk discussion reports intermittent Chromium/GPU instability on an Orange Pi Zero 3 after extended operation.
+- These reports do not establish how the current UI performs in native landscape mode with all custom modules active.
+
+Price checks from Spanish/European listings found a 1.5 GB unit around €43, a 2 GB unit around €51, and a 4 GB unit around €64, before the complete bundle (PSU, microSD, passive heatsink/case, HDMI lead) is counted. Therefore it is physically attractive, but does not meet the current €40 all-in budget on the evidence found.
+
+Sources: [Orange Pi Zero 3 official hardware manual](https://uelectronics.com/wp-content/uploads/2026/01/OrangePi_Zero3_H618_user-manual_v1.3.pdf), [MagicMirror forum: Orange Pi Zero 3 screen rotation](https://forum.magicmirror.builders/topic/18347/orange-pi-zero-3-screen-rotation), [DietPi community thread](https://dietpi.com/forum/t/orangepi-zero-3-screen-rotation-and-xrandr-issues/18854), [Spanish listing for Orange Pi Zero 3](https://www.alicantecno.es/es/producto/placa-de-desarrollo-orange-pi-zero-3-con-1-1-5-2-4gb-de-ram-ddr4-allwinner-h618-bluetooth-5-0-wifi-5-wifi-bluetooth-ble-a0fcfc).
