@@ -1,11 +1,10 @@
 "use strict";
 
-const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { inspectImage } = require("./sharpWorkerClient");
 const { createTemporaryPath } = require("./cache");
-const { WmsRequestError, readBodyWithLimit, sanitiseLogText } = require("./sources/wms");
+const { WmsRequestError, streamResponseToFile, discardResponseBody, sanitiseLogText } = require("./sources/wms");
 
 const ENDPOINT = "https://view.eumetsat.int/geoserver/wms";
 const REQUEST_TIMEOUT = 90_000;
@@ -157,15 +156,21 @@ async function downloadOverlay({ variant, size, paths, userAgent, signal = null,
   const url = buildOverlayUrl(variant, size);
   const requestSignal = combineSignals(signal, REQUEST_TIMEOUT);
   let response;
-  let buffer;
+  let streamed;
+  let uniqueTempFile = null;
   try {
     response = await fetch(url, {
       headers: { Accept: "image/png,image/*;q=0.9", "User-Agent": userAgent },
       signal: requestSignal.signal
     });
-    buffer = await readBodyWithLimit(response, MAX_OVERLAY_BYTES);
+    if (!response.ok) {
+      await discardResponseBody(response);
+    } else {
+      uniqueTempFile = createTemporaryPath(paths.tempImageFile);
+      streamed = await streamResponseToFile(response, uniqueTempFile, MAX_OVERLAY_BYTES, { signal: requestSignal.signal });
+    }
   } catch (error) {
-    if (error instanceof WmsRequestError) throw error;
+    if (error instanceof WmsRequestError || error.name === "AbortError") throw error;
     throw new WmsRequestError(`EUMETView overlay request failed: ${sanitiseLogText(error.message)}`, {
       retryable: !signal?.aborted,
       details: { request: "GetMap overlay", variant: variant.id }
@@ -175,71 +180,60 @@ async function downloadOverlay({ variant, size, paths, userAgent, signal = null,
   }
 
   if (!response.ok) {
-    throw new WmsRequestError(`EUMETView overlay request failed: HTTP ${response.status}`, {
+    throw new WmsRequestError(`EUMETView overlay request failed: HTTP ${response.status}.`, {
       status: response.status,
       retryable: response.status === 429 || response.status >= 500,
       details: { request: "GetMap overlay", variant: variant.id }
     });
   }
 
-  const uniqueValidationFile = createTemporaryPath(paths.tempImageFile);
-  let metadata;
   try {
-    fs.writeFileSync(uniqueValidationFile, buffer, { mode: 0o644 });
-    metadata = await inspectImage(uniqueValidationFile, { signal });
-  } catch (error) {
-    if (error.name === "AbortError") throw error;
-    throw new WmsRequestError(`EUMETView returned an unreadable overlay: ${sanitiseLogText(error.message)}`, { retryable: true });
-  } finally {
-    fs.rmSync(uniqueValidationFile, { force: true });
-  }
-  if (metadata.format !== "png" || metadata.width !== size || metadata.height !== size || metadata.hasAlpha !== true) {
-    throw new WmsRequestError("EUMETView returned an invalid overlay image.", {
-      retryable: true,
-      details: { format: metadata.format, width: metadata.width, height: metadata.height, hasAlpha: metadata.hasAlpha }
-    });
-  }
-  if (isActive && !isActive()) {
-    const error = new Error("Obsolete overlay download discarded.");
-    error.name = "AbortError";
-    throw error;
-  }
-
-  const hash = crypto.createHash("sha256").update(buffer).digest("hex");
-  const previousState = readOverlayState(paths);
-  const changed = previousState.contentHash !== hash || !fs.existsSync(paths.imageFile);
-  if (changed) {
-    const uniqueTempFile = createTemporaryPath(paths.tempImageFile);
+    let metadata;
     try {
-      fs.writeFileSync(uniqueTempFile, buffer, { mode: 0o644 });
-      if (isActive && !isActive()) {
-        const error = new Error("Obsolete overlay download discarded.");
-        error.name = "AbortError";
-        throw error;
-      }
-      fs.renameSync(uniqueTempFile, paths.imageFile);
-    } finally {
-      fs.rmSync(uniqueTempFile, { force: true });
+      metadata = await inspectImage(uniqueTempFile, { signal });
+    } catch (error) {
+      if (error.name === "AbortError") throw error;
+      throw new WmsRequestError(`EUMETView returned an unreadable overlay: ${sanitiseLogText(error.message)}`, { retryable: true });
     }
+
+    if (metadata.format !== "png" || metadata.width !== size || metadata.height !== size || metadata.hasAlpha !== true) {
+      throw new WmsRequestError("EUMETView returned an invalid overlay image.", {
+        retryable: true,
+        details: { format: metadata.format, width: metadata.width, height: metadata.height, hasAlpha: metadata.hasAlpha }
+      });
+    }
+    if (isActive && !isActive()) {
+      const error = new Error("Obsolete overlay download discarded.");
+      error.name = "AbortError";
+      throw error;
+    }
+
+    const previousState = readOverlayState(paths);
+    const changed = previousState.contentHash !== streamed.hash || !fs.existsSync(paths.imageFile);
+    if (changed) {
+      fs.renameSync(uniqueTempFile, paths.imageFile);
+      uniqueTempFile = null;
+    }
+
+    const checkedAt = new Date().toISOString();
+    const expiry = getExpiry(response);
+    const state = writeOverlayState(paths, {
+      variant: variant.id,
+      layers: variant.layers,
+      size,
+      contentHash: streamed.hash,
+      downloadedAt: changed ? checkedAt : previousState.downloadedAt || checkedAt,
+      checkedAt,
+      expiresAt: expiry.expiresAt,
+      cacheControl: expiry.cacheControl,
+      bytes: streamed.bytes
+    });
+    debug?.("Overlay response", { variant: variant.id, layers: variant.layers, bytes: streamed.bytes, width: size, height: size, cacheControl: expiry.cacheControl, expiresAt: expiry.expiresAt, sha256: streamed.hash });
+    return { paths, state, changed };
+  } finally {
+    if (uniqueTempFile) fs.rmSync(uniqueTempFile, { force: true });
   }
-
-  const checkedAt = new Date().toISOString();
-  const expiry = getExpiry(response);
-  const state = writeOverlayState(paths, {
-    variant: variant.id,
-    layers: variant.layers,
-    size,
-    contentHash: hash,
-    downloadedAt: changed ? checkedAt : previousState.downloadedAt || checkedAt,
-    checkedAt,
-    expiresAt: expiry.expiresAt,
-    cacheControl: expiry.cacheControl,
-    bytes: buffer.length
-  });
-  debug?.("Overlay response", { variant: variant.id, layers: variant.layers, bytes: buffer.length, width: size, height: size, cacheControl: expiry.cacheControl, expiresAt: expiry.expiresAt, sha256: hash });
-  return { paths, state, changed };
 }
-
 function overlayIsFresh(paths, state, now = Date.now()) {
   return fs.existsSync(paths.imageFile)
     && Number.isFinite(Date.parse(state.expiresAt))
