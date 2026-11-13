@@ -125,3 +125,16 @@ Do not enable the kiosk unit at boot until you have confirmed how your desktop s
 - Native dependencies such as `sharp` must be installed for the target CPU architecture, operating system and libc. Do not copy `node_modules` from a different architecture. On ARMv7, the locked `sharp` prebuilt requires glibc >=2.36 and Electron 44 is not available; use Serveronly + a matching Chromium package only after checking the target OS. Prefer ARM64 or x86_64 for the baseline deployment. See [the detailed compatibility matrix](./serveronly-hardware-compatibility.md).
 
 Run the manual tests on the target board before enabling automatic startup.
+
+
+## Runtime resource sampling
+
+After the server and Chromium kiosk are running, collect memory samples from a second terminal:
+
+```bash
+npm run server:resource-monitor -- --duration=900 --interval=5 --output=resources.json
+```
+
+The monitor records Linux `MemAvailable` and swap plus PSS/RSS for MagicMirror, Chromium and Meteosat worker processes. PSS is preferred when evaluating Chromium's multiple processes because it accounts proportionally for shared pages. The JSON report is created with owner-only permissions. Run the monitor while the mirror is doing representative work, including a Meteosat image refresh.
+
+This is an observation tool, not an automatic pass/fail hardware benchmark. It does not currently measure CPU, GPU memory, cgroup pressure, storage latency or temperature; validate those separately on the exact board in its final enclosure.
