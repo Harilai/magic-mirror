@@ -3,9 +3,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
+const sharp = require("sharp");
 const { Readable } = require("stream");
-const { WmsRequestError, sanitiseLogText, parseTimeDimension, extractLatestLayerTime, readBodyWithLimit, streamResponseToFile } = require("../src/sources/wms");
+const { WmsRequestError, sanitiseLogText, parseTimeDimension, extractLatestLayerTime, readBodyWithLimit, streamResponseToFile, downloadWmsImage } = require("../src/sources/wms");
 
 const fixtures = path.join(__dirname, "fixtures");
 
@@ -107,6 +109,52 @@ test("stream response removes partial files when aborted", async () => {
     await assert.rejects(operation, (error) => error.name === "AbortError");
     assert.equal(fs.existsSync(destination), false);
   } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+
+test("WMS image download streams, validates, hashes and atomically stores the response", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "mmm-meteosat-wms-download-"));
+  const width = 240;
+  const height = 240;
+  const raw = Buffer.alloc(width * height * 3);
+  let state = 0x12345678;
+  for (let index = 0; index < raw.length; index += 1) {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    raw[index] = state & 0xff;
+  }
+  const png = await sharp(raw, { raw: { width, height, channels: 3 } })
+    .png({ compressionLevel: 0 })
+    .toBuffer();
+  const targetFile = path.join(root, "source.png");
+  const tempFile = path.join(root, "source.png.tmp");
+  const originalFetch = global.fetch;
+
+  try {
+    global.fetch = async () => new Response(png, {
+      status: 200,
+      headers: { "content-type": "image/png" }
+    });
+    const result = await downloadWmsImage({
+      profile: { layer: "test:layer" },
+      targetFile,
+      tempFile,
+      size: width,
+      userAgent: "MMM-Meteosat-test",
+      imageTime: "2026-11-13T09:00:00.000Z"
+    });
+
+    assert.equal(result.bytes, png.length);
+    assert.equal(result.hash, require("crypto").createHash("sha256").update(png).digest("hex"));
+    assert.equal(result.metadata.width, width);
+    assert.equal(result.metadata.height, height);
+    assert.deepEqual(fs.readFileSync(targetFile), png);
+    assert.equal(fs.readdirSync(root).some((name) => name.includes(".tmp.")), false);
+  } finally {
+    global.fetch = originalFetch;
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
