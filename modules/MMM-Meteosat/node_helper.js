@@ -13,7 +13,7 @@ const { evaluateFreshness } = require("./src/status");
 const { selectOverlayVariant, normaliseOverlayOpacity, getOverlayPaths, readOverlayState, ensureOverlay } = require("./src/overlay");
 
 const VERSION = "1.4.1";
-const { MINIMUM_UPDATE_INTERVAL, normaliseUpdateInterval, normaliseImageSize, normaliseStaleAfter, normaliseRetryDelays } = require("./src/config");
+const { MINIMUM_UPDATE_INTERVAL, normaliseUpdateInterval, normaliseImageSize, normaliseStaleAfter, normaliseRetryDelays, getRenderImageSize } = require("./src/config");
 const { abortError, runWithRetries } = require("./src/retry");
 const MAX_CLIENTS = 10;
 const MAX_INSTANCE_ID_LENGTH = 128;
@@ -114,7 +114,7 @@ module.exports = NodeHelper.create({
       productLabel: config.selection.profile.label, layer: config.selection.profile.layer,
       cacheId: config.cacheId, updateIntervalMs: config.updateInterval,
       minimumUpdateIntervalMs: MINIMUM_UPDATE_INTERVAL, wmsImageSize: config.wmsImageSize,
-      displayImageSize: config.imageSize, staleAfterMs: config.staleAfter,
+      displayImageSize: config.imageSize, renderImageSize: getRenderImageSize(config.imageSize, config.wmsImageSize), staleAfterMs: config.staleAfter,
       retryDelaysMs: config.retryDelays, timestampType: config.timestampType,
       showTimestamp: config.showTimestamp, timestampLocale: config.timestampLocale,
       showSource: config.showSource, showProduct: config.showProduct,
@@ -210,6 +210,7 @@ module.exports = NodeHelper.create({
     const summary = { trigger, result: "failed", capabilitiesSource: null, remoteTime: null, cachedTime: null, downloaded: false, processed: false, downloadBytes: null };
     const { config } = client;
     const { selection } = config;
+    const renderImageSize = getRenderImageSize(config.imageSize, config.wmsImageSize);
     const paths = this.getPaths(client);
     ensureCache(paths);
     const debug = (title, entries) => entries && typeof entries === "object" ? logger.block("DEBUG", title, entries) : logger.debug(`${title}${entries ? `: ${entries}` : ""}`);
@@ -227,7 +228,9 @@ module.exports = NodeHelper.create({
 
       const latestTimestamp = Date.parse(latestImageTime);
       const previousTimestamp = Date.parse(previousState.imageTime);
-      const cacheComplete = exists(paths.sourceFile) && exists(paths.imageFile);
+      const cacheComplete = exists(paths.sourceFile)
+        && exists(paths.imageFile)
+        && previousState.processing?.renderSize === renderImageSize;
       let decision = "download";
       if (cacheComplete && Number.isFinite(latestTimestamp) && Number.isFinite(previousTimestamp) && latestTimestamp <= previousTimestamp) decision = "skip";
 
@@ -250,7 +253,9 @@ module.exports = NodeHelper.create({
       summary.downloadBytes = sourceResult.bytes;
       const successfulDownloadAt = sourceResult.downloadedAt || nowIso();
 
-      if (previousState.contentHash === sourceResult.hash && exists(paths.imageFile)) {
+      if (previousState.contentHash === sourceResult.hash
+        && exists(paths.imageFile)
+        && previousState.processing?.renderSize === renderImageSize) {
         const unchangedState = writeState(paths, {
           ...previousState,
           imageTime: sourceResult.imageTime || previousState.imageTime || null,
@@ -267,7 +272,7 @@ module.exports = NodeHelper.create({
       }
 
       const processing = await processImage({
-        sourceFile: paths.sourceFile, targetFile: paths.imageFile, tempFile: paths.tempImageFile, debug, signal: controller.signal,
+        sourceFile: paths.sourceFile, targetFile: paths.imageFile, tempFile: paths.tempImageFile, debug, signal: controller.signal, renderSize: renderImageSize,
         isActive: () => this.isCurrent(instanceId, client, controller)
       });
       this.assertCurrent(instanceId, client, controller);
@@ -319,7 +324,7 @@ module.exports = NodeHelper.create({
         operation: () => ensureOverlay({
           baseDirectory: this.moduleDirectory,
           variant,
-          size: client.config.wmsImageSize,
+          size: getRenderImageSize(client.config.imageSize, client.config.wmsImageSize),
           userAgent: USER_AGENT,
           signal: controller.signal,
           isActive: () => this.getClient(instanceId) === client && client.overlayController === controller && !controller.signal.aborted && !client.suspended,
@@ -363,7 +368,7 @@ module.exports = NodeHelper.create({
   getOverlayPayload(client) {
     const variant = selectOverlayVariant(client.config.showCoastlines, client.config.showCountryBorders);
     if (!variant) return { overlayPath: null, overlayVersion: null };
-    const paths = getOverlayPaths(this.moduleDirectory, client.config.wmsImageSize, variant);
+    const paths = getOverlayPaths(this.moduleDirectory, getRenderImageSize(client.config.imageSize, client.config.wmsImageSize), variant);
     if (!exists(paths.imageFile)) return { overlayPath: null, overlayVersion: null };
     const state = readOverlayState(paths);
     const version = state.contentHash || statSize(paths.imageFile) || Date.now();
