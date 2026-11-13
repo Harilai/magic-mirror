@@ -50,7 +50,7 @@ Relevant source: `modules/MMM-Meteosat/src/sharpWorker.js` and `modules/MMM-Mete
 
 The configured `MMM-Spotify` module uses its default `updateInterval: 1000` while playback is active and `idleInterval: 10000` while idle. This is mainly a network/API and periodic CPU cost, not a major steady-state memory problem.
 
-**Next implementation item:** test a 2,000–3,000 ms active polling interval and retain the 10,000 ms idle interval. Disable `debug: true` in the deployed configuration unless actively diagnosing an issue. Confirm that progress updates and controls remain acceptable.
+**Implemented in the project configuration:** `MMM-Spotify` now uses a 2,000 ms active polling interval and the 10,000 ms idle interval, with debug logging disabled. This halves the normal active polling frequency; validate that the two-second progress refresh is acceptable on the mirror.
 
 Relevant source: `modules/MMM-Spotify/MMM-Spotify.js`, `modules/MMM-Spotify/node_helper.js`, and `config/config.js`.
 
@@ -90,7 +90,7 @@ Run the full configured mirror on the exact OS and board and record:
 
 Use `MemAvailable`, not just the `free` column from `free`, to assess headroom. A cached Linux filesystem page is reclaimable and should not be mistaken for an application memory leak.
 
-The new `server:resource-monitor` command samples Linux `MemAvailable`/swap and PSS/RSS for matching MagicMirror, Chromium and Meteosat worker processes. It records samples and peak PSS to a mode-0600 JSON report. The monitor is a sampling aid: it does not yet measure cgroup pressure, CPU utilisation, disk I/O, thermal throttling or GPU memory. The `server:device-check` remains a compatibility preflight, not a performance certification.
+The new `server:resource-monitor` command samples Linux `MemAvailable`/swap, PSS/RSS for matching MagicMirror, Chromium and Meteosat worker processes, and available Linux thermal zones. It records samples, peak PSS and peak temperature by sensor to a mode-0600 JSON report. The monitor is a sampling aid: it does not yet measure cgroup pressure, CPU utilisation, disk I/O, GPU memory or actual clock throttling. The `server:device-check` remains a compatibility preflight, not a performance certification.
 
 ## Hardware implications
 
@@ -148,4 +148,4 @@ npm run server:resource-monitor -- --duration=900 --interval=5 --output=resource
 
 The default filter includes Chromium processes, the `serveronly` backend, MagicMirror paths, Meteosat and the Sharp worker. The monitor samples `/proc/meminfo` for total/available/swap memory and reads `smaps_rollup` for PSS where permissions allow. PSS is more suitable than adding RSS for a multi-process Chromium instance because shared pages are proportionally accounted for. If `smaps_rollup` cannot be read, the report flags an RSS-only fallback for that process.
 
-Run a representative workload during the measurement: wait for initial Meteosat retrieval, at least one later update, active and idle Spotify, weather/calendar refresh, and Remote Control access. For a credible purchase decision, repeat with the actual 1920 × 1080 panel powered and the compute unit mounted in its final rear cavity. The monitor currently does not sample CPU, cgroup pressure, GPU memory, SSD latency or temperature, so those remain separate acceptance checks.
+Run a representative workload during the measurement: wait for initial Meteosat retrieval, at least one later update, active and idle Spotify, weather/calendar refresh, and Remote Control access. For a credible purchase decision, repeat with the actual 1920 × 1080 panel powered and the compute unit mounted in its final rear cavity. The monitor currently does not sample CPU, cgroup pressure, GPU memory, SSD latency or clock-throttling flags. Thermal-zone reporting is best-effort; some boards do not expose usable sensors through Linux sysfs.
