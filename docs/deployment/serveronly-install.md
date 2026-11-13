@@ -138,3 +138,26 @@ npm run server:resource-monitor -- --duration=900 --interval=5 --output=resource
 The monitor records Linux `MemAvailable` and swap, PSS/RSS for MagicMirror, Chromium and Meteosat worker processes, and any temperature sensors exposed through `/sys/class/thermal`. PSS is preferred when evaluating Chromium's multiple processes because it accounts proportionally for shared pages. The JSON report is created with owner-only permissions. Run the monitor while the mirror is doing representative work, including a Meteosat image refresh.
 
 This is an observation tool, not an automatic pass/fail hardware benchmark. It does not currently measure CPU utilisation, GPU memory, cgroup pressure, storage latency or clock-throttling flags. Thermal sensors are best-effort; some boards may not expose them.
+
+
+## Separate server and display client
+
+The compute board behind the mirror does not have to run the MagicMirror backend. If another always-on Linux machine is available, run the Serveronly backend and all Node helpers (including Spotify and Meteosat/Sharp) on that machine. The small board behind the mirror can then run only a minimal graphical session, Chromium and the kiosk launcher.
+
+This repository's existing `clientonly/index.js` starts Electron. For a low-memory Chromium client, use the separate kiosk launcher with `MM_KIOSK_URL` instead; it connects directly to the remote MagicMirror HTTP(S) endpoint and does not load a local `config/config.js` or start a local MagicMirror backend.
+
+Example:
+
+```bash
+MM_KIOSK_URL=http://192.168.25.10:8080/ \
+MM_BROWSER_BIN=chromium \
+node scripts/serveronly-kiosk.js
+```
+
+The URL must be an absolute HTTP(S) URL without credentials, query parameters or a fragment. A non-root base path is supported. The launcher waits for the remote server to respond before opening Chromium.
+
+For systemd, copy `deploy/systemd/magicmirror-client-kiosk.service.example` to the client board's user unit directory and replace the example LAN URL with the server's reserved address. Enable this client unit only in the active graphical session. Do **not** install `magicmirror-server.service` on the display client in this topology. On the server host, use `magicmirror-server.service` and do not start a local Chromium kiosk unless that host also has a display.
+
+The backend must listen on a LAN-reachable interface, its firewall must allow the client board on the MagicMirror port, and the server's `ipWhitelist` must include the client IP/subnet. Keep the service on the trusted LAN; do not expose it through router port forwarding. Reserve the backend host's DHCP address so the client URL remains stable.
+
+This split moves Spotify polling, Meteosat downloads, Sharp processing, image cache and Remote Control routes away from the display board. Chromium still renders the complete frontend and can remain the dominant client-side memory consumer. It does not make a 512 MB board automatically adequate; test the full UI, 1920 × 1080 output and overnight stability before purchase.
