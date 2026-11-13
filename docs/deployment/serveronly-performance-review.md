@@ -126,7 +126,8 @@ The compute unit is intended to sit behind the mirror glass. Acoustic output and
 |---|---|---|
 | Dell Wyse 5070 Standard | Community teardown/review describes the standard chassis as all-passive; official dimensions are 184 × 184 × 35.6 mm. Independent idle measurements around 2.7 W headless and 5.6 W with monitor are reported, depending on configuration. | Silent and efficient, but the 184 mm square footprint is bulky behind a mirror. Keep as a fallback if it can be mounted on the rear frame outside the display cavity. |
 | Dell Wyse 3040 | 101.6 × 101.6 × 27.94 mm; Atom x5-Z8350, soldered 2 GB RAM and 8/16 GB eMMC in Dell documentation. | Thin and very compact, but the fixed 2 GB RAM and small storage make it a risky MagicMirror candidate. Not approved without a full workload test. |
-| Fujitsu FUTRO S940 | Fujitsu describes it as fanless; J5005 variants and 4/8 GB RAM are documented. | Worth comparing, but verify dimensions and the exact listing configuration before treating it as a shallow device. |
+| Minisforum Z83-F | Fanless Atom x5-Z8350; 4 GB RAM, 64 GB eMMC, HDMI; 120 × 120 × 27 mm. | Best x86 compact/passive candidate found, but used listings are €45–50 before shipping; outside the current all-in budget. |
+| Fujitsu FUTRO S940 | Fanless J5005 variants exist with 4/8 GB RAM; 250 × 193 × 52 mm and ventilation clearance requirements. | Exclude for the behind-glass installation: too deep and large. |
 | ARM64 SBC with passive case | Smallest likely form factor and can be fanless. | High integration risk: exact maintained OS image, Chromium graphics acceleration, Wi-Fi, Sharp, and sustained thermal behaviour must be checked per board. |
 
 **Current purchase filter:** do not buy a fan-cooled unit for the mirror enclosure. Prefer passive cooling and a shallower design; do not trade away RAM, storage reliability, Chromium support or thermal safety just to meet a low depth figure.
@@ -171,9 +172,11 @@ The split-server layout remains the more promising route for a compact client, b
 
 ## Current software validation status
 
-At commit `af89490551f42ce5d01a551626608946c4ef1aaf`, GitHub Actions on Ubuntu 24.04 with Node.js 22.22.2 passed:
+At commit `b5f0b904eecd01446d1ebd76909c5cd2d1fc5735`, GitHub Actions on Ubuntu 24.04 with Node.js 22.22.2 passed:
 - 55/55 MMM-Meteosat tests, including downsampling, alpha-mask equivalence, streamed WMS downloads, bounded response sizes, abort cleanup, and overlay cache writes.
-- 14/14 standalone deployment tests, including PSS parsing, thermal-zone readings, monitor self-exclusion, remote kiosk URL validation, and readiness probing.
+- 18/18 standalone deployment tests, including PSS parsing, thermal-zone readings, monitor self-exclusion, remote kiosk URL validation/readiness, and environment-sourced Remote Control secret checks.
+
+[Latest CI run](https://github.com/Harilai/magic-mirror/actions/runs/43437528692).
 
 This is CI validation on x86-64 Linux. It is not a 1080p browser visual test, ARM build test, physical thermal test, or overnight reliability test.
 
