@@ -2,7 +2,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { getRemoteMirrorUrl } = require("../../scripts/serveronly-kiosk");
+const http = require("node:http");
+const { getRemoteMirrorUrl, requestReady } = require("../../scripts/serveronly-kiosk");
 
 test("remote kiosk URL accepts HTTP and normalises a base path", () => {
   const url = getRemoteMirrorUrl("http://192.168.25.10:8080/mirror");
@@ -33,4 +34,21 @@ test("remote kiosk URL rejects credentials, queries, fragments and malformed val
   assert.throws(() => getRemoteMirrorUrl("http://mirror.local/#section"), /query string or fragment/);
   assert.throws(() => getRemoteMirrorUrl("not-a-url"), /valid absolute URL/);
   assert.throws(() => getRemoteMirrorUrl(""), /non-empty HTTP\(S\) URL/);
+});
+
+
+test("remote readiness probe verifies a reachable HTTP server", async () => {
+  const server = http.createServer((request, response) => {
+    response.statusCode = request.url === "/mirror/" ? 200 : 404;
+    response.end("ok");
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+
+  try {
+    const address = server.address();
+    assert.equal(await requestReady(new URL(`http://127.0.0.1:${address.port}/mirror/`)), true);
+    assert.equal(await requestReady(new URL(`http://127.0.0.1:${address.port}/missing/`)), false);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });
