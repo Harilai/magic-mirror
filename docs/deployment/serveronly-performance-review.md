@@ -29,7 +29,7 @@ Relevant source: `modules/MMM-Meteosat/MMM-Meteosat.js`, `modules/MMM-Meteosat/n
 
 This is robustly bounded, but it increases peak heap usage and duplicates disk I/O. During `Buffer.concat()`, the chunks and the resulting buffer coexist temporarily.
 
-**Next implementation item:** stream each response to one unique temporary file while counting bytes and updating SHA-256 incrementally. Validate that file with Sharp, then atomically rename it into the cache. On non-success HTTP responses, retain only a small bounded response preview. Preserve cancellation handling, maximum-byte limits, cleanup on every failure path, and atomic replacement. Tests are required for oversized bodies, malformed images, HTTP errors, aborts, and successful replacement.
+**Implemented on the work branch:** WMS satellite images and overlay layers now stream to one unique temporary file while enforcing byte limits and calculating SHA-256 incrementally. Sharp validates the temporary file before an atomic rename. This removes the full response buffer, its concatenation copy, and the second validation/write cycle. Non-2xx bodies are cancelled rather than buffered for log previews. Tests cover byte limits, cancellation cleanup, streamed hashes, complete WMS image handling and overlay cache writes.
 
 Relevant source: `modules/MMM-Meteosat/src/sources/wms.js` and `modules/MMM-Meteosat/src/overlay.js`.
 
@@ -90,7 +90,7 @@ Run the full configured mirror on the exact OS and board and record:
 
 Use `MemAvailable`, not just the `free` column from `free`, to assess headroom. A cached Linux filesystem page is reclaimable and should not be mistaken for an application memory leak.
 
-The current `server:device-check` reports total RAM but does not measure the running MagicMirror/Chromium workload, peak PSS, or memory pressure. Treat it as a compatibility preflight, not a performance certification.
+The new `server:resource-monitor` command samples Linux `MemAvailable`/swap and PSS/RSS for matching MagicMirror, Chromium and Meteosat worker processes. It records samples and peak PSS to a mode-0600 JSON report. The monitor is a sampling aid: it does not yet measure cgroup pressure, CPU utilisation, disk I/O, thermal throttling or GPU memory. The `server:device-check` remains a compatibility preflight, not a performance certification.
 
 ## Hardware implications
 
@@ -136,3 +136,16 @@ The compute unit is intended to sit behind the mirror glass. Acoustic output and
 | ARM64 SBC with passive case | Smallest likely form factor and can be fanless. | High integration risk: exact maintained OS image, Chromium graphics acceleration, Wi-Fi, Sharp, and sustained thermal behaviour must be checked per board. |
 
 **Current purchase filter:** do not buy a fan-cooled unit for the mirror enclosure. Prefer passive cooling and a shallower design; do not trade away RAM, storage reliability, Chromium support or thermal safety just to meet a low depth figure.
+
+
+## Runtime resource monitor
+
+Start the backend and Chromium kiosk first, then run this from a second terminal or SSH session on the same Linux device:
+
+```bash
+npm run server:resource-monitor -- --duration=900 --interval=5 --output=resources.json
+```
+
+The default filter includes Chromium processes, the `serveronly` backend, MagicMirror paths, Meteosat and the Sharp worker. The monitor samples `/proc/meminfo` for total/available/swap memory and reads `smaps_rollup` for PSS where permissions allow. PSS is more suitable than adding RSS for a multi-process Chromium instance because shared pages are proportionally accounted for. If `smaps_rollup` cannot be read, the report flags an RSS-only fallback for that process.
+
+Run a representative workload during the measurement: wait for initial Meteosat retrieval, at least one later update, active and idle Spotify, weather/calendar refresh, and Remote Control access. For a credible purchase decision, repeat with the actual 1920 × 1080 panel powered and the compute unit mounted in its final rear cavity. The monitor currently does not sample CPU, cgroup pressure, GPU memory, SSD latency or temperature, so those remain separate acceptance checks.
