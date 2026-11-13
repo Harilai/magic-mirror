@@ -127,7 +127,8 @@ test("render size never upscales a source image", async () => {
 test("in-place alpha masking matches the mask helper and preserves RGB bytes", () => {
   const width = 37;
   const height = 29;
-  const alpha = Buffer.from({ length: width * height }, (_, index) => (index * 37) % 256);
+  const alpha = Buffer.alloc(width * height);
+  for (let index = 0; index < alpha.length; index += 1) alpha[index] = (index * 37) % 256;
   const geometry = getGeometry(width, height);
   const expectedMask = buildMask(width, height, geometry, alpha);
   const rgba = Buffer.alloc(width * height * 4);
