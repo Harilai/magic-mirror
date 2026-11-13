@@ -33,19 +33,13 @@ This is robustly bounded, but it increases peak heap usage and duplicates disk I
 
 Relevant source: `modules/MMM-Meteosat/src/sources/wms.js` and `modules/MMM-Meteosat/src/overlay.js`.
 
-### P1 — Sharp worker allocates two avoidable per-pixel buffers and performs a square root for every pixel
+### P1 — Sharp worker allocation and per-pixel CPU cost
 
-For an 1800 × 1800 input, `sharpWorker.js` currently creates:
-- an RGBA buffer of 12,960,000 bytes;
-- a separate source-alpha buffer of 3,240,000 bytes;
-- a separate output-alpha mask of 3,240,000 bytes.
+In the baseline implementation, the 1800 × 1800 processing path created an RGBA buffer plus separate source-alpha and output-alpha buffers (about 18.54 MiB of JavaScript pixel buffers), and called `Math.hypot()` once per pixel.
 
-That is about 18.54 MiB of JavaScript pixel buffers at 1800 × 1800, excluding Sharp/libvips allocations. The worker also calls `Math.hypot()` once per pixel. The alpha value can be updated directly in the RGBA buffer, preserving the source alpha, and squared-distance comparisons can avoid a square root for pixels clearly inside or outside the narrow feather boundary.
+**Implemented on the work branch:** the mask logic now lives in `src/alphaMask.js`; the worker changes alpha bytes directly in the RGBA buffer and uses squared-distance checks, calculating a square root only in the narrow feather band. It retains the separate Sharp child process so a processing peak is isolated from the long-lived MagicMirror server. Pixel-equivalence tests compare against the previous `Math.hypot` algorithm, verify RGB bytes remain unchanged, and test malformed dimensions. These tests passed in CI. The exact CPU-time reduction still needs benchmarking on the target board.
 
-**Recommendation:** optimize the worker in-place and use squared radii, calculating `Math.sqrt()` only for pixels in the feather band. Keep the current mask semantics, and add pixel-for-pixel equivalence tests over opaque and partially transparent fixtures, including non-square images and boundary pixels. Keep the separate child process: it isolates native image-processing peaks from the long-lived MagicMirror server.
-
-Relevant source: `modules/MMM-Meteosat/src/sharpWorker.js` and `modules/MMM-Meteosat/src/imageProcessor.js`.
-
+Relevant source: `modules/MMM-Meteosat/src/alphaMask.js`, `modules/MMM-Meteosat/src/sharpWorker.js`, `modules/MMM-Meteosat/src/imageProcessor.js`.
 ### P2 — Spotify polls every second during active playback
 
 The configured `MMM-Spotify` module uses its default `updateInterval: 1000` while playback is active and `idleInterval: 10000` while idle. This is mainly a network/API and periodic CPU cost, not a major steady-state memory problem.
