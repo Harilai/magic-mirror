@@ -158,14 +158,11 @@ function collectSample({ procRoot = "/proc", matcher = new RegExp(DEFAULT_MATCH,
 
 function summariseSamples(samples) {
   if (!samples.length) throw new Error("No samples were collected.");
-  const max = (values) => {
-    const valid = values.filter(Number.isFinite);
-    return valid.length ? Math.max(...valid) : null;
-  };
-  const min = (values) => {
-    const valid = values.filter(Number.isFinite);
-    return valid.length ? Math.min(...valid) : null;
-  };
+  const extreme = (values, comparator) => values
+    .filter(Number.isFinite)
+    .reduce((best, value) => best === null ? value : comparator(best, value), null);
+  const max = (values) => extreme(values, Math.max);
+  const min = (values) => extreme(values, Math.min);
   const peakPssSample = samples.reduce((best, sample) =>
     (sample.target.pssBytes ?? -1) > (best.target.pssBytes ?? -1) ? sample : best
   );
@@ -239,6 +236,7 @@ async function runMonitor(options) {
     const outputPath = path.resolve(options.output);
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600 });
+    fs.chmodSync(outputPath, 0o600);
     console.log(`Resource report written to ${outputPath}`);
   } else {
     console.log(JSON.stringify({
