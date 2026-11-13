@@ -19,7 +19,7 @@ The current configuration sets `imageSize: 350` and `wmsImageSize: 1800`. The fr
 
 At four bytes per decoded RGBA pixel, one 1800 × 1800 browser image represents about 12.36 MiB of pixel data; the satellite image plus overlay represent about 24.72 MiB before other browser surfaces and copies. At 700 × 700 (2× the CSS width), the equivalent pair is about 3.74 MiB. These are decoded-pixel estimates, not a measurement of Chromium's total RSS/PSS.
 
-**Recommendation:** preserve the 1800 px source if needed for processing, but resize the final cached satellite output to a configurable render size derived from `imageSize` (initially 2× CSS width, capped at source size). Request/cache the combined coastline/border overlay at exactly the same render size. Verify visual sharpness, alpha edge quality, and image/overlay alignment at 1920 × 1080 before reducing the source WMS request itself.
+**Implemented on the work branch:** the WMS source remains at 1800 px; the processed browser image and overlay now use a 2× display-width target capped at the WMS source size. With the current 350 px CSS width, both output layers are 700 px. Older cached output without matching render-size metadata is regenerated rather than reused. This change does not reduce source download resolution. Visual sharpness, alpha edges and image/overlay alignment still require a real browser check at 1920 × 1080.
 
 Relevant source: `modules/MMM-Meteosat/MMM-Meteosat.js`, `modules/MMM-Meteosat/node_helper.js`, `modules/MMM-Meteosat/src/overlay.js`, `modules/MMM-Meteosat/MMM-Meteosat.css`.
 
@@ -29,7 +29,7 @@ Relevant source: `modules/MMM-Meteosat/MMM-Meteosat.js`, `modules/MMM-Meteosat/n
 
 This is robustly bounded, but it increases peak heap usage and duplicates disk I/O. During `Buffer.concat()`, the chunks and the resulting buffer coexist temporarily.
 
-**Recommendation:** stream each response to one unique temporary file while counting bytes and updating SHA-256 incrementally. Validate that file with Sharp, then atomically rename it into the cache. On non-success HTTP responses, retain only a small bounded response preview. Preserve cancellation handling, maximum-byte limits, cleanup on every failure path, and atomic replacement. Add tests for oversized bodies, malformed images, HTTP errors, aborts, and successful replacement before changing this path.
+**Next implementation item:** stream each response to one unique temporary file while counting bytes and updating SHA-256 incrementally. Validate that file with Sharp, then atomically rename it into the cache. On non-success HTTP responses, retain only a small bounded response preview. Preserve cancellation handling, maximum-byte limits, cleanup on every failure path, and atomic replacement. Tests are required for oversized bodies, malformed images, HTTP errors, aborts, and successful replacement.
 
 Relevant source: `modules/MMM-Meteosat/src/sources/wms.js` and `modules/MMM-Meteosat/src/overlay.js`.
 
@@ -50,7 +50,7 @@ Relevant source: `modules/MMM-Meteosat/src/sharpWorker.js` and `modules/MMM-Mete
 
 The configured `MMM-Spotify` module uses its default `updateInterval: 1000` while playback is active and `idleInterval: 10000` while idle. This is mainly a network/API and periodic CPU cost, not a major steady-state memory problem.
 
-**Recommendation:** test a 2,000–3,000 ms active polling interval and retain the 10,000 ms idle interval. Disable `debug: true` in the deployed configuration unless actively diagnosing an issue. Confirm that progress updates and controls remain acceptable.
+**Next implementation item:** test a 2,000–3,000 ms active polling interval and retain the 10,000 ms idle interval. Disable `debug: true` in the deployed configuration unless actively diagnosing an issue. Confirm that progress updates and controls remain acceptable.
 
 Relevant source: `modules/MMM-Spotify/MMM-Spotify.js`, `modules/MMM-Spotify/node_helper.js`, and `config/config.js`.
 
@@ -114,3 +114,25 @@ Users in the MagicMirror community report running alternative boards such as Le 
 - Then benchmark the complete mirror at 1920 × 1080 and use the results to set a defensible minimum RAM/CPU specification.
 
 This review is static. It does not certify any board, guarantee a memory figure, or imply that the proposed optimizations have already been implemented.
+
+
+## Compact and silent installation constraints
+
+The compute unit is intended to sit behind the mirror glass. Acoustic output and depth therefore matter as much as CPU performance.
+
+- **Cooling preference:** fanless passive cooling; no moving parts in the compute unit. A fanless chassis still needs thermal clearance and must not be sealed against an insulating surface.
+- **Depth preference:** target at or below 30 mm for the compute unit; 30–36 mm is a compromise, not an ideal behind-glass solution. A flat SBC with a ventilated passive heatsink case is preferred if its software stack passes the same acceptance tests.
+- **Footprint:** prefer a board/box that can be mounted to the rear frame without covering the active screen area or blocking panel ventilation.
+- **Power:** an external fanless DC adapter is acceptable, but it must be mounted with strain relief and away from heat-sensitive film/adhesive.
+- **Thermal envelope:** test with the actual rear cavity, panel heat and ambient temperature. A fanless unit can throttle when installed in a closed, warm cavity even if it is quiet on an open desk.
+
+### Hardware candidates with acoustic/size evidence
+
+| Candidate | Cooling / physical evidence | Practical status |
+|---|---|---|
+| Dell Wyse 5070 Standard | Community teardown/review describes the standard chassis as all-passive; official dimensions are 184 × 184 × 35.6 mm. Independent idle measurements around 2.7 W headless and 5.6 W with monitor are reported, depending on configuration. | Silent and efficient, but the 184 mm square footprint is bulky behind a mirror. Keep as a fallback if it can be mounted on the rear frame outside the display cavity. |
+| Dell Wyse 3040 | 101.6 × 101.6 × 27.94 mm; Atom x5-Z8350, soldered 2 GB RAM and 8/16 GB eMMC in Dell documentation. | Thin and very compact, but the fixed 2 GB RAM and small storage make it a risky MagicMirror candidate. Not approved without a full workload test. |
+| Fujitsu FUTRO S940 | Fujitsu describes it as fanless; J5005 variants and 4/8 GB RAM are documented. | Worth comparing, but verify dimensions and the exact listing configuration before treating it as a shallow device. |
+| ARM64 SBC with passive case | Smallest likely form factor and can be fanless. | High integration risk: exact maintained OS image, Chromium graphics acceleration, Wi-Fi, Sharp, and sustained thermal behaviour must be checked per board. |
+
+**Current purchase filter:** do not buy a fan-cooled unit for the mirror enclosure. Prefer passive cooling and a shallower design; do not trade away RAM, storage reliability, Chromium support or thermal safety just to meet a low depth figure.
