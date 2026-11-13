@@ -20,7 +20,10 @@ on:
     paths:
       - "modules/MMM-Meteosat/**"
       - "scripts/serveronly-resource-monitor.js"
+      - "scripts/serveronly-kiosk.js"
       - "tests/standalone/**"
+      - "deploy/systemd/**"
+      - "docs/deployment/**"
       - "config/config.js"
       - "package.json"
       - ".github/workflows/metosat-validation.yml"
