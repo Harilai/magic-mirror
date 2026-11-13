@@ -119,7 +119,7 @@ Create a local, untracked secret file on the **backend host**:
 mkdir -p ~/.config/magicmirror
 chmod 700 ~/.config/magicmirror
 umask 077
-printf 'MM_REMOTE_CONTROL_API_KEY=%s\\n' "$(openssl rand -hex 32)" > ~/.config/magicmirror/secrets.env
+printf 'MM_REMOTE_CONTROL_API_KEY=%s\n' "$(openssl rand -hex 32)" > ~/.config/magicmirror/secrets.env
 chmod 600 ~/.config/magicmirror/secrets.env
 ```
 
