@@ -12,7 +12,8 @@ const {
   normaliseUpdateInterval,
   normaliseImageSize,
   normaliseStaleAfter,
-  normaliseRetryDelays
+  normaliseRetryDelays,
+  getRenderImageSize
 } = require("../src/config");
 
 test("update interval enforces the five-minute minimum", () => {
@@ -44,4 +45,13 @@ test("retry delays reject invalid values, cap delays and limit entries", () => {
     normaliseRetryDelays([0, 1000.8, -1, Number.NaN, MAX_RETRY_DELAY + 1, 2, 3, 4, 5]),
     [0, 1001, MAX_RETRY_DELAY, 2, 3]
   );
+});
+
+test("render image size uses 2x display dimensions and never exceeds WMS source size", () => {
+  assert.equal(getRenderImageSize(350, 1800), 700);
+  assert.equal(getRenderImageSize(550, 1800), 1100);
+  assert.equal(getRenderImageSize(1200, 1800), 1800);
+  assert.equal(getRenderImageSize(350, 600), 600);
+  assert.equal(getRenderImageSize(null, 1800), 1800);
+  assert.equal(getRenderImageSize(0, 1800), 1800);
 });
