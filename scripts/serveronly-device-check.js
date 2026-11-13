@@ -157,10 +157,13 @@ function checkSecurityConfig(config, results) {
 	}
 
 	const apiKey = remote.config?.apiKey;
-	if (typeof apiKey === "string" && apiKey.trim()) {
-		add(results, "WARN", "remote-control-api-key", "An API key is present in the loaded config. Ensure it is rotated and supplied from an untracked local secret source; the value was not displayed.");
+	const environmentApiKey = process.env.MM_REMOTE_CONTROL_API_KEY;
+	if (typeof environmentApiKey === "string" && environmentApiKey.trim() && apiKey === environmentApiKey) {
+		add(results, "PASS", "remote-control-api-key", "Remote Control API key is loaded from MM_REMOTE_CONTROL_API_KEY; its value was not displayed.");
+	} else if (typeof apiKey === "string" && apiKey.trim()) {
+		add(results, "WARN", "remote-control-api-key", "An API key is loaded, but it is not confirmed to come from MM_REMOTE_CONTROL_API_KEY. Move it to an untracked local secret file and rotate any key previously committed; the value was not displayed.");
 	} else {
-		add(results, "PASS", "remote-control-api-key", "No literal API key is present in the loaded config.");
+		add(results, "WARN", "remote-control-api-key", "MM_REMOTE_CONTROL_API_KEY is not configured. With secureEndpoints=true, protected Remote Control endpoints will remain blocked until a key is supplied.");
 	}
 }
 
@@ -280,4 +283,4 @@ if (require.main === module) {
 	});
 }
 
-module.exports = { parseVersion, isSupportedNode, parseOsRelease, collectDiagnostics };
+module.exports = { parseVersion, isSupportedNode, parseOsRelease, checkSecurityConfig, collectDiagnostics };
