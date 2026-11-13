@@ -316,7 +316,7 @@ async function downloadWmsImage({ profile, targetFile, tempFile, size, userAgent
       imageTime: resolvedImageTime,
       responseTime: response.headers.get("last-modified") || response.headers.get("date") || null,
       downloadedAt: new Date().toISOString(),
-      source: "EUMETSat EUMETView WMS",
+      source: "EUMETSAT EUMETView WMS",
       layer: profile.layer,
       durationMs,
       metadata
@@ -333,5 +333,6 @@ module.exports = {
   parseTimeDimension,
   extractLatestLayerTime,
   readBodyWithLimit,
-  streamResponseToFile
+  streamResponseToFile,
+  discardResponseBody
 };
