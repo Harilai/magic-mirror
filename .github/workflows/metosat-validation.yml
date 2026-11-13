@@ -57,6 +57,9 @@ jobs:
       - name: Run Meteosat unit tests
         run: npm test --prefix modules/MMM-Meteosat
 
+      - name: Run target-device benchmark smoke test
+        run: npm run benchmark --prefix modules/MMM-Meteosat -- --source-size=600 --render-size=300 --repeat=1
+
       - name: Check deployment script syntax
         run: |
           node --check scripts/serveronly-resource-monitor.js
