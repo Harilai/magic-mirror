@@ -13,7 +13,7 @@ This deployment runs the existing MagicMirror Serveronly backend as a user servi
 
 The preflight intentionally does not install packages, modify the user's config, stop processes, or open firewall ports.
 
-For a broader target-device diagnostic (architecture, Node, libc, Chromium, configured module entry points, `sharp` image-processing smoke test, and selected security warnings), run:
+For a broader target-device diagnostic (architecture, Node, libc, x86 SSE4.2 availability for Sharp, Chromium, configured module entry points, `sharp` image-processing smoke test, and selected security warnings), run:
 
 ```bash
 npm run server:device-check
