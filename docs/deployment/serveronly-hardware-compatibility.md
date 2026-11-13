@@ -160,3 +160,37 @@ The hardware filter has been tightened to include acoustic and mechanical fit. E
 - The Radxa ZERO 3W is a genuine small-format 65 × 30 mm board with 1–8 GB RAM variants and Micro-HDMI. Its vendor design brief permits no additional cooling for light-to-moderate loads, but sustained load or elevated ambient temperature can require supplementary heatsinking. A Radxa forum thread documents earlier Debian Bullseye graphics acceleration problems; do not assume the Chromium compositor is hardware-accelerated without checking `chrome://gpu` on the exact OS image.
 
 **Updated decision:** the most plausible physical form factor is a passively cooled ARM64 SBC with at least 4 GB RAM and reliable eMMC or high-endurance storage, but no such complete configuration has yet been verified under €40 in Spain. The compact board candidates currently found are over budget. Do not buy an underspecified or low-memory board to satisfy the price ceiling.
+
+
+## 8. Split-host candidate: Raspberry Pi Zero 2 W as Chromium client
+
+A separate server/client deployment can materially change the physical board requirements:
+
+- The server host runs Node.js MagicMirror, all module helpers, Spotify polling, Meteosat/Sharp processing, cache and Remote Control.
+- The display board only runs Linux, a small X session and Chromium kiosk pointed to `MM_KIOSK_URL`.
+- The work branch's `scripts/serveronly-kiosk.js` now supports that remote URL without loading a local MagicMirror config or starting a second backend.
+- `deploy/systemd/magicmirror-client-kiosk.service.example` is the separate user service. The ordinary local kiosk service remains available for a single-box deployment.
+
+### Raspberry Pi Zero 2 W
+
+| Property | Value | Impact |
+|---|---:|---|
+| Board footprint | 65 × 30 mm | Excellent fit behind glass |
+| RAM | 512 MB | Low; full frontend workload remains unproven |
+| CPU | Quad Cortex-A53, 1 GHz | Adequate only as a candidate for browser-client testing |
+| Wi-Fi | 2.4 GHz 802.11n | Fine for a trusted LAN if signal is stable |
+| Video | Mini-HDMI, up to 1080p60 | Requires the correct Mini-HDMI cable/adapter |
+| Cooling | Passive board, no fan | Silent; still needs a small heatsink/airflow if sustained browser load raises temperature |
+| Observed Spain board listings | About €21–25, several currently shown out of stock | Board-only price is not a complete installation cost |
+
+Community evidence: one MagicMirror forum deployment reports roughly 194–206 MiB for a minimal Serveronly backend on a separate host and 240–248 MiB for DietPi + bare X + Chromium kiosk on the client. The author describes a small module set. This is not representative of the current project's full frontend or a guaranteed Zero 2 W RAM requirement.
+
+**Decision:** retain the Zero 2 W as an experimental display-client candidate only, provided a suitable always-on server already exists. Its tiny dimensions and price are attractive, but 512 MB RAM creates limited headroom. Validate the full module layout, 1920 × 1080 output, PSS, thermal zones, Wi-Fi reconnect behaviour and overnight stability before buying. If those checks fail, move to an ARM64 client with 2–4 GB RAM, or a thin x86 client mounted elsewhere.
+
+### Current best hardware direction
+
+- **If a separate always-on server exists:** test a Raspberry Pi Zero 2 W as the display client first; it is the strongest size/price fit, not yet an approved device.
+- **If one device must do everything:** Fujitsu FUTRO S740 or Dell Wyse 5070 have the lower software risk, but are larger and more expensive. S740 is 36 mm thick (147 × 165 mm footprint without feet) and official guidance requests 100 mm ventilation clearance, which may be difficult in a closed mirror cavity.
+- **Do not buy the 2 GB Le Potato bundle solely because its listing is €39.69:** it still needs reliable storage/power and the exact Linux/Chromium graphics stack has not been certified for the complete frontend.
+
+The selection remains conditional on the physical rear cavity, the availability of a separate server (for split mode), and actual workload measurements.
