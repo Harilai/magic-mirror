@@ -159,7 +159,7 @@ Run the manual tests on the target board before enabling automatic startup.
 To compare CPU and native image-processing memory on a Linux candidate, run the same workload on each device:
 
 ```bash
-npm run benchmark --prefix modules/MMM-Meteosat -- --source-size=1800 --render-size=700 --repeat=3
+npm run server:benchmark-meteosat -- --source-size=1800 --render-size=700 --repeat=3
 ```
 
 This benchmarks the Sharp worker and alpha-mask path only. It is not a whole-device or Chromium benchmark. Pair it with the resource monitor while the complete mirror runs at 1920 × 1080; see the performance review for the measurement protocol.
