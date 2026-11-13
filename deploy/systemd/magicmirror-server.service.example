@@ -7,6 +7,9 @@ After=network-online.target
 Type=simple
 WorkingDirectory=%h/MagicMirror
 Environment=NODE_ENV=production
+# Optional, untracked local secret file (create with chmod 600). Protected Remote Control
+# endpoints remain blocked by secureEndpoints=true when this file/key is missing.
+EnvironmentFile=-%h/.config/magicmirror/secrets.env
 # Uncomment and keep identical in the kiosk unit if you use a custom config or port:
 # Environment=MM_CONFIG_FILE=%h/MagicMirror/config/config.js
 # Environment=MM_PORT=8080
