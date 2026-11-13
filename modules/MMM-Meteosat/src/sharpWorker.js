@@ -60,7 +60,8 @@ async function processImage(request) {
     geometry,
     inputBytes,
     outputBytes: fs.statSync(request.outputFile).size,
-    durationMs: Math.round(performance.now() - started)
+    durationMs: Math.round(performance.now() - started),
+    workerMaxRssKb: process.platform === "linux" ? process.resourceUsage().maxRSS : null
   };
 }
 
