@@ -85,8 +85,8 @@ function inspectImage(file, options) {
   return runSharpWorker({ operation: "inspect", file }, options);
 }
 
-function processImageInWorker(sourceFile, outputFile, options) {
-  return runSharpWorker({ operation: "process", sourceFile, outputFile }, options);
+function processImageInWorker(sourceFile, outputFile, { signal = null, renderSize = null } = {}) {
+  return runSharpWorker({ operation: "process", sourceFile, outputFile, renderSize }, { signal });
 }
 
 module.exports = { runSharpWorker, inspectImage, processImageInWorker };
