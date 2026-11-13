@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const sharp = require("sharp");
 const {
   VARIANTS,
   DEFAULT_MAX_AGE_MS,
@@ -15,7 +16,8 @@ const {
   parseMaxAge,
   getExpiry,
   buildOverlayUrl,
-  overlayIsFresh
+  overlayIsFresh,
+  downloadOverlay
 } = require("../src/overlay");
 
 test("overlay selection maps all configuration combinations", () => {
@@ -102,6 +104,44 @@ test("fresh overlay cache requires both file and unexpired state", () => {
     assert.equal(overlayIsFresh(paths, { expiresAt: "2026-07-29T10:00:00.000Z" }, Date.parse("2026-07-22T10:00:00.000Z")), true);
     assert.equal(overlayIsFresh(paths, { expiresAt: "2026-07-21T10:00:00.000Z" }, Date.parse("2026-07-22T10:00:00.000Z")), false);
   } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+
+test("overlay download streams to an atomic cache file and records its hash", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "mmm-meteosat-overlay-stream-"));
+  const size = 32;
+  const raw = Buffer.alloc(size * size * 4);
+  for (let index = 0; index < size * size; index += 1) {
+    raw[index * 4] = (index * 17) % 256;
+    raw[index * 4 + 1] = (index * 29) % 256;
+    raw[index * 4 + 2] = (index * 43) % 256;
+    raw[index * 4 + 3] = 255;
+  }
+  const png = await sharp(raw, { raw: { width: size, height: size, channels: 4 } }).png().toBuffer();
+  const paths = getOverlayPaths(root, size, VARIANTS.coastlines);
+  fs.mkdirSync(paths.directory, { recursive: true });
+  const originalFetch = global.fetch;
+
+  try {
+    global.fetch = async () => new Response(png, {
+      status: 200,
+      headers: { "content-type": "image/png", "cache-control": "public, max-age=7200" }
+    });
+    const result = await downloadOverlay({
+      variant: VARIANTS.coastlines,
+      size,
+      paths,
+      userAgent: "MMM-Meteosat-test"
+    });
+    assert.equal(result.changed, true);
+    assert.equal(result.state.bytes, png.length);
+    assert.equal(result.state.contentHash, require("crypto").createHash("sha256").update(png).digest("hex"));
+    assert.deepEqual(fs.readFileSync(paths.imageFile), png);
+    assert.equal(fs.readdirSync(paths.directory).some((name) => name.includes(".tmp.")), false);
+  } finally {
+    global.fetch = originalFetch;
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
