@@ -162,3 +162,14 @@ The project's regular `clientonly/index.js` starts Electron, so it is not the lo
 Potential display client to test: Raspberry Pi Zero 2 W, 65 × 30 mm, 512 MB RAM, Wi-Fi 2.4 GHz and Mini-HDMI up to 1080p60. A MagicMirror forum user measured about 240–248 MiB for a minimal Chromium kiosk on a separate client Pi, but on a different installation. This leaves limited headroom on a 512 MB board once the full configured frontend is loaded. The board is therefore a **proof-of-concept candidate only**, not an approved purchase. Retail listings around €21–€25 were found but some were out of stock; power supply, microSD and Mini-HDMI cable/adapter must be included in the complete-cost calculation.
 
 The split topology is the first option to benchmark if there is already a suitable always-on server in the home. It could eliminate the need to put the heavier x86 mini-PC behind the glass.
+
+
+### Revised split-client hardware ranking
+
+The Raspberry Pi Zero 2 W is physically ideal (65 × 30 mm) but has only 512 MB RAM. Community evidence is mixed: a minimal server/client deployment reports 240–248 MiB for bare X + Chromium kiosk on a separate client, while another 2025 MagicMirror discussion reports Chromium failing to load on the Zero 2 W and identifies 512 MB as a constraint. Raspberry Pi's current kiosk guidance recommends a Pi 3 or newer with at least 1 GB RAM.
+
+Therefore, use **Raspberry Pi 3B+ (1 GB)** as the first split-client test candidate if a separate backend is available. The official board footprint is about 85 × 56 mm and it exposes full-size HDMI; a lightweight third-party kiosk project lists 3B+ (1 GB) as tested, with a heatsink recommended for continuous use. It is less tiny than the Zero 2 W but remains small and low profile. Its software-rendering requirements on the older VideoCore IV mean visual smoothness must still be tested at 1920 × 1080.
+
+Used listings around €35 were found for Pi 3B+ units supplied with fan cases and/or PSU. Passive-case listings were seen around €52. The current search has not established a fully equipped, passive, silent Pi 3B+ kit at or below €40. Treat the 35 € fan-cooled bundle only as a price lead, not a recommendation for this mirror.
+
+The split-server layout remains the more promising route for a compact client, but it does not make the Zero 2 W a safe purchase. A 1 GB client gives more margin; full UI and overnight tests remain mandatory.
