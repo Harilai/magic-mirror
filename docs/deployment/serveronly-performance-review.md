@@ -182,3 +182,10 @@ At commit `af89490551f42ce5d01a551626608946c4ef1aaf`, GitHub Actions on Ubuntu 2
 - 14/14 standalone deployment tests, including PSS parsing, thermal-zone readings, monitor self-exclusion, remote kiosk URL validation, and readiness probing.
 
 This is CI validation on x86-64 Linux. It is not a 1080p browser visual test, ARM build test, physical thermal test, or overnight reliability test.
+
+
+## Security gate before deployment
+
+The project config now reads the `MMM-Remote-Control` API key only from `MM_REMOTE_CONTROL_API_KEY`. The example backend systemd unit loads the optional, untracked file `~/.config/magicmirror/secrets.env`. The device diagnostic distinguishes an environment-sourced key, a non-environment key, and a missing key; the diagnostic does not print key material.
+
+A key was previously committed to the repository. It must be replaced with a newly generated local key before the backend is exposed to the LAN. The old value remains in Git history, so do not reuse it. With `secureEndpoints: true`, a missing key blocks protected Remote Control operations instead of silently opening them.
