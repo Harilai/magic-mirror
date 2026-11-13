@@ -17,7 +17,7 @@ Important qualifications:
 
 - The repository engine range accepts Node 22.22.2. The official Node archive explicitly lists Linux x64, ARM64 and ARMv7 binaries for that version.
 - Prefer Node 22.22.2 on ARMv7. The current Node platform table marks Linux armv7 experimental (and notes the downgrade from Node 24); do not treat ARMv7 as the long-term preferred deployment target.
-- Do not infer `sharp` compatibility from CPU architecture alone. Check the target's actual libc with `ldd --version` and Node's runtime report. For the locked `sharp` 0.35.5 package, use the official prebuilt-binary requirements below.
+- Do not infer `sharp` compatibility from CPU architecture alone. On x86-64 the prebuilt binary requires SSE4.2; the device checker now reads the actual CPU flags in `/proc/cpuinfo` before attempting to load Sharp. It also checks the real native image-conversion path. Check the target's actual libc with `ldd --version` and Node's runtime report.
 - The lockfile contains optional platform packages `@img/sharp-linux-arm` and `@img/sharp-linux-arm64`. Install dependencies on the target device; never copy a `node_modules` tree built for a different architecture or libc.
 - Raspberry Pi OS Desktop includes Chromium. Raspberry Pi OS has 32-bit and 64-bit editions; its official documentation identifies Pi 3, 4 and 5 as capable of running the 64-bit edition.
 
@@ -245,3 +245,8 @@ Sources: [Orange Pi Zero 3 official hardware manual](https://uelectronics.com/wp
 - **HP t630:** fanless and upgradeable, but its official case is 42 × 220 × 240 mm without stand, so it is large and deeper than the preferred 30–36 mm maximum. It is not a good behind-glass fit.
 
 Sources: [Z83-F specification and size](https://minis-pc.com/product/coofun-z83-f-processor-intel-atom-x5-z8350-4gb-64gb-windows-10-pro-mini-pc/), [Z83-F used listing](https://www.kleinanzeigen.de/s-anzeige/minisforum-z83-f-luefterloser-mini-pc-4gb-64gb-linux-inkl-ovp/3550945847-228-2904), [ECS LIVA Q2 manufacturer description](https://campaign.ecs.com.tw/ECSWebSite/Product/Product_Overview/EN/System/LIVA%20Q2/LIVA), [LIVA Q2 cooling review](https://www.hexus.net/tech/reviews/systems/126542-ecs-liva-q2/), [ZOTAC CI323 passive specifications](https://www.zotac.com/product/mini_pcs/zbox-ci323-nano), [HP t630 dimensions](https://h10032.www1.hp.com/ctg/Manual/c05193361.pdf).
+
+
+### x86 CPU feature gate
+
+The automated device check verifies `sse4_2` from `/proc/cpuinfo` before loading the x86 Sharp binary. A missing flag is a hard FAIL and the Sharp load is skipped, avoiding an illegal-instruction crash on older x86 systems. If CPU flags cannot be read, the checker warns and keeps the native Sharp smoke test as the final compatibility check. ARM64 does not use the x86 SSE4.2 test.
