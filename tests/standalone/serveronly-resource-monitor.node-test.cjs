@@ -155,3 +155,28 @@ test("summary reports peak target PSS and minimum system headroom", () => {
   assert.deepEqual(summary.peakPssProcesses, [{ pid: 1 }]);
   assert.deepEqual(summary.peakTemperaturesC, { cpu: 68.5, gpu: 56 });
 });
+
+
+test("resource monitor excludes its own process from target PSS totals", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "serveronly-resource-self-"));
+  try {
+    const self = path.join(root, String(process.pid));
+    fs.mkdirSync(self);
+    fs.writeFileSync(path.join(self, "cmdline"), "node\\0scripts/serveronly-resource-monitor.js\\0");
+    fs.writeFileSync(path.join(self, "smaps_rollup"), "Rss: 4096 kB\\nPss: 2048 kB\\n");
+
+    const target = path.join(root, "808");
+    fs.mkdirSync(target);
+    fs.writeFileSync(path.join(target, "cmdline"), "node\\0./serveronly\\0");
+    fs.writeFileSync(path.join(target, "smaps_rollup"), "Rss: 8192 kB\\nPss: 4096 kB\\n");
+
+    const processes = require("../../scripts/serveronly-resource-monitor").collectTargetProcesses({
+      procRoot: root,
+      matcher: /serveronly/i
+    });
+    assert.deepEqual(processes.map((entry) => entry.pid), [808]);
+    assert.equal(processes[0].pssBytes, 4096 * 1024);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
