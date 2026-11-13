@@ -10,6 +10,20 @@ const MAX_RETRY_DELAYS = 5;
 const MINIMUM_WMS_IMAGE_SIZE = 600;
 const MAXIMUM_WMS_IMAGE_SIZE = 3600;
 
+const RENDER_SCALE_FACTOR = 2;
+
+function getRenderImageSize(displayImageSize, wmsImageSize) {
+  const sourceSize = Number.isFinite(wmsImageSize) && wmsImageSize > 0
+    ? Math.round(wmsImageSize)
+    : DEFAULT_WMS_IMAGE_SIZE;
+  const displaySize = Number.isFinite(displayImageSize) && displayImageSize > 0
+    ? Math.round(displayImageSize)
+    : sourceSize;
+
+  return Math.min(sourceSize, Math.max(1, Math.round(displaySize * RENDER_SCALE_FACTOR)));
+}
+
+
 function normaliseUpdateInterval(value) {
   return Number.isFinite(value)
     ? Math.max(MINIMUM_UPDATE_INTERVAL, Math.round(value))
@@ -46,6 +60,8 @@ module.exports = {
   MAX_RETRY_DELAYS,
   MINIMUM_WMS_IMAGE_SIZE,
   MAXIMUM_WMS_IMAGE_SIZE,
+  RENDER_SCALE_FACTOR,
+  getRenderImageSize,
   normaliseUpdateInterval,
   normaliseImageSize,
   normaliseStaleAfter,
