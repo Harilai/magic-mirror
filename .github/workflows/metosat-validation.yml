@@ -1,0 +1,42 @@
+name: MMM-Meteosat validation
+
+on:
+  push:
+    branches:
+      - feature/magicmirror-serveronly-deployment
+    paths:
+      - "modules/MMM-Meteosat/**"
+      - ".github/workflows/metosat-validation.yml"
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - "modules/MMM-Meteosat/**"
+      - ".github/workflows/metosat-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.2"
+          cache: npm
+          cache-dependency-path: modules/MMM-Meteosat/package-lock.json
+
+      - name: Install Meteosat module dependencies
+        run: npm ci --prefix modules/MMM-Meteosat --no-audit --no-fund
+
+      - name: Check JavaScript syntax
+        run: npm run check --prefix modules/MMM-Meteosat
+
+      - name: Run Meteosat unit tests
+        run: npm test --prefix modules/MMM-Meteosat
