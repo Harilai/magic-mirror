@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
-const { checkSecurityConfig } = require("../../scripts/serveronly-device-check");
+const { checkSecurityConfig, parseCpuFlags, checkSharpCpuFeatures } = require("../../scripts/serveronly-device-check");
 
 function remoteConfig(apiKey = "") {
   return {
@@ -85,4 +85,33 @@ test("project configuration reads Remote Control API key from environment only",
     if (previous === undefined) delete process.env.MM_REMOTE_CONTROL_API_KEY;
     else process.env.MM_REMOTE_CONTROL_API_KEY = previous;
   }
+});
+
+
+test("CPU flag parser reads x86 SSE4.2 features", () => {
+  const flags = parseCpuFlags("processor : 0\\nflags : fpu sse sse2 sse4_1 sse4_2 avx\\n");
+  assert.ok(flags.has("sse4_2"));
+  assert.ok(flags.has("sse4_1"));
+});
+
+test("device check fails x86 Sharp preflight when SSE4.2 is unavailable", () => {
+  const results = [];
+  const supported = checkSharpCpuFeatures("x64", "flags : fpu sse sse2 sse4_1\\n", results);
+  assert.equal(supported, false);
+  assert.equal(results[0].status, "FAIL");
+  assert.equal(results[0].check, "sharp-cpu-features");
+});
+
+test("device check accepts x86 Sharp preflight when SSE4.2 is available", () => {
+  const results = [];
+  const supported = checkSharpCpuFeatures("x64", "flags : fpu sse sse2 sse4_1 sse4_2\\n", results);
+  assert.equal(supported, true);
+  assert.equal(results[0].status, "PASS");
+  assert.equal(results[0].check, "sharp-cpu-features");
+});
+
+test("ARM64 devices do not require the x86 SSE4.2 flag", () => {
+  const results = [];
+  assert.equal(checkSharpCpuFeatures("arm64", "", results), true);
+  assert.equal(results.length, 0);
 });
