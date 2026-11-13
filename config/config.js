@@ -62,9 +62,11 @@ const config = {
 			module: "MMM-Spotify",
 			position: "bottom_right",
 			config: {
-				debug: true,
+				debug: false,
 				style: "mini",
-				showVolumeLabel: false
+				showVolumeLabel: false,
+				updateInterval: 2000,
+				idleInterval: 10000
 			}
 		},
 		{
