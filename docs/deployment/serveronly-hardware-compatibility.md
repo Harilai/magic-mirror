@@ -194,3 +194,24 @@ Community evidence: one MagicMirror forum deployment reports roughly 194–206 M
 - **Do not buy the 2 GB Le Potato bundle solely because its listing is €39.69:** it still needs reliable storage/power and the exact Linux/Chromium graphics stack has not been certified for the complete frontend.
 
 The selection remains conditional on the physical rear cavity, the availability of a separate server (for split mode), and actual workload measurements.
+
+
+### More conservative display client: Raspberry Pi 3 Model B+
+
+The Pi Zero 2 W remains an interesting ultra-small client, but its 512 MB RAM is not a safe baseline for this mirror. A recent user discussion contains both a successful minimal DietPi/Chromium client configuration and reports of Chromium failing to load MagicMirror on the Zero 2 W. Raspberry Pi's own kiosk tutorial recommends a Pi 3 or newer with at least 1 GB RAM for Chromium.
+
+The Raspberry Pi 3B+ is therefore the more conservative client-only candidate:
+
+| Property | Value | Impact |
+|---|---:|---|
+| RAM | 1 GB | Twice the Zero 2 W memory; still requires full-UI measurement |
+| Board dimensions | 85 × 56 mm | Small footprint, still physically compact |
+| Thickness | About 19.5 mm board/envelope | Better behind-glass profile than a thin client |
+| Video | Full-size HDMI, 1080p | No Mini-HDMI adapter required |
+| Wireless | 2.4/5 GHz Wi-Fi | More flexibility than the Zero 2 W's 2.4 GHz-only radio |
+| Audio | 3.5 mm analogue output | Useful if audio is required locally, subject to the chosen audio path |
+| Cooling | No fan required by the board itself; metal heat spreader | Use passive heatsinking/adequate airflow and test in the final cavity |
+
+Independent kiosk project evidence: a recent lightweight kiosk project lists the Pi 3B+ (1 GB) as its tested platform and recommends a heatsink for continuous operation. It also notes software rendering on this generation; expect less compositor headroom than on a newer GPU. A local second-hand listing around €35 includes a fan and PSU, while another Vinted listing around €35 includes a fan case and microSD. A passively cooled Vinted listing was around €52, above the target. Therefore **there is not yet a complete, silent Pi 3B+ kit verified at or below €40**.
+
+**Updated decision:** if a separate always-on server is available, prefer testing a passively cooled Pi 3B+ client before the 512 MB Zero 2 W. Its 1 GB RAM is the safer starting point under Raspberry Pi's own kiosk guidance. Neither is approved until the full 1920 × 1080 mirror passes memory, temperature, network recovery and overnight tests. If the display client must also run Raspotify/audio processing, include that workload in the benchmark.
