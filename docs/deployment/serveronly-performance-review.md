@@ -149,3 +149,16 @@ npm run server:resource-monitor -- --duration=900 --interval=5 --output=resource
 The default filter includes Chromium processes, the `serveronly` backend, MagicMirror paths, Meteosat and the Sharp worker. The monitor samples `/proc/meminfo` for total/available/swap memory and reads `smaps_rollup` for PSS where permissions allow. PSS is more suitable than adding RSS for a multi-process Chromium instance because shared pages are proportionally accounted for. If `smaps_rollup` cannot be read, the report flags an RSS-only fallback for that process.
 
 Run a representative workload during the measurement: wait for initial Meteosat retrieval, at least one later update, active and idle Spotify, weather/calendar refresh, and Remote Control access. For a credible purchase decision, repeat with the actual 1920 × 1080 panel powered and the compute unit mounted in its final rear cavity. The monitor currently does not sample CPU, cgroup pressure, GPU memory, SSD latency or clock-throttling flags. Thermal-zone reporting is best-effort; some boards do not expose usable sensors through Linux sysfs.
+
+
+## Alternative topology: backend on an always-on host, Chromium on the mirror
+
+MagicMirror's backend and browser can run on separate machines. A forum deployment reports DietPi + bare services + MagicMirror Serveronly using about 194–206 MiB on the server device, and DietPi + bare X + Chromium kiosk using about 240–248 MiB on a separate client. The author describes a small/basic module set and that is not a measurement of this project's full frontend, 1080p display, or Meteosat/Spotify configuration. Use it as evidence that the split topology is practical, not as a RAM guarantee.
+
+The project's regular `clientonly/index.js` starts Electron, so it is not the low-memory path for this deployment. The work branch now supports `MM_KIOSK_URL` in `scripts/serveronly-kiosk.js`: the display device can start Chromium directly against the remote backend without a local config file or server process. A separate systemd example, `magicmirror-client-kiosk.service.example`, is provided for that topology.
+
+**Why this matters for hardware selection:** a small, passive ARM board may be suitable as a browser-only client even if it would be an unsafe choice for the combined Node + Sharp + Chromium host. The server still needs a reliable always-on machine on the same trusted LAN. Chromium continues to render all frontend modules, so the client still requires an actual memory/thermal test.
+
+Potential display client to test: Raspberry Pi Zero 2 W, 65 × 30 mm, 512 MB RAM, Wi-Fi 2.4 GHz and Mini-HDMI up to 1080p60. A MagicMirror forum user measured about 240–248 MiB for a minimal Chromium kiosk on a separate client Pi, but on a different installation. This leaves limited headroom on a 512 MB board once the full configured frontend is loaded. The board is therefore a **proof-of-concept candidate only**, not an approved purchase. Retail listings around €21–€25 were found but some were out of stock; power supply, microSD and Mini-HDMI cable/adapter must be included in the complete-cost calculation.
+
+The split topology is the first option to benchmark if there is already a suitable always-on server in the home. It could eliminate the need to put the heavier x86 mini-PC behind the glass.
