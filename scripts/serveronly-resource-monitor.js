@@ -86,6 +86,31 @@ function parseSmapsRollup(content) {
   };
 }
 
+function readThermalSensors(sysRoot = "/sys") {
+  const thermalRoot = path.join(sysRoot, "class", "thermal");
+  let entries;
+  try {
+    entries = fs.readdirSync(thermalRoot).filter((entry) => /^thermal_zone\\d+$/.test(entry));
+  } catch {
+    return [];
+  }
+
+  const sensors = [];
+  for (const entry of entries) {
+    const zone = path.join(thermalRoot, entry);
+    try {
+      const type = fs.readFileSync(path.join(zone, "type"), "utf8").trim() || entry;
+      const rawTemperature = Number(fs.readFileSync(path.join(zone, "temp"), "utf8").trim());
+      if (!Number.isFinite(rawTemperature)) continue;
+      const temperatureC = Math.abs(rawTemperature) >= 1000 ? rawTemperature / 1000 : rawTemperature;
+      sensors.push({ zone: entry, type, temperatureC: Math.round(temperatureC * 10) / 10 });
+    } catch {
+      // Thermal zones may disappear or be inaccessible while the monitor is running.
+    }
+  }
+  return sensors.sort((left, right) => left.zone.localeCompare(right.zone, undefined, { numeric: true }));
+}
+
 function parseStatusRss(content) {
   const match = /^VmRSS:\s+(\d+)\s+kB$/m.exec(content);
   return match ? Number(match[1]) * 1024 : null;
@@ -140,13 +165,14 @@ function sumKnown(processes, key) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
 }
 
-function collectSample({ procRoot = "/proc", matcher = new RegExp(DEFAULT_MATCH, "i"), now = new Date() } = {}) {
+function collectSample({ procRoot = "/proc", sysRoot = "/sys", matcher = new RegExp(DEFAULT_MATCH, "i"), now = new Date() } = {}) {
   const memInfoPath = path.join(procRoot, "meminfo");
   const memory = parseMemoryInfo(fs.readFileSync(memInfoPath, "utf8"));
   const processes = collectTargetProcesses({ procRoot, matcher });
   return {
     timestamp: now.toISOString(),
     memory,
+    temperatures: readThermalSensors(sysRoot),
     target: {
       processCount: processes.length,
       pssBytes: sumKnown(processes, "pssBytes"),
@@ -163,6 +189,12 @@ function summariseSamples(samples) {
     .reduce((best, value) => best === null ? value : comparator(best, value), null);
   const max = (values) => extreme(values, Math.max);
   const min = (values) => extreme(values, Math.min);
+  const peakTemperaturesC = {};
+  for (const sample of samples) {
+    for (const sensor of sample.temperatures || []) {
+      peakTemperaturesC[sensor.type] = Math.max(peakTemperaturesC[sensor.type] ?? -Infinity, sensor.temperatureC);
+    }
+  }
   const peakPssSample = samples.reduce((best, sample) =>
     (sample.target.pssBytes ?? -1) > (best.target.pssBytes ?? -1) ? sample : best
   );
@@ -172,6 +204,7 @@ function summariseSamples(samples) {
     peakTargetRssBytes: max(samples.map((sample) => sample.target.rssBytes)),
     minimumMemAvailableBytes: min(samples.map((sample) => sample.memory.availableBytes)),
     peakTargetProcessCount: max(samples.map((sample) => sample.target.processCount)),
+    peakTemperaturesC,
     peakPssAt: peakPssSample.timestamp,
     peakPssProcesses: peakPssSample.target.processes,
     samples
@@ -204,8 +237,11 @@ async function runMonitor(options) {
       const availableGiB = latest.memory.availableBytes === null
         ? "n/a"
         : `${(latest.memory.availableBytes / (1024 ** 3)).toFixed(2)} GiB`;
+      const hottest = latest.temperatures.length
+        ? ` | hottest ${Math.max(...latest.temperatures.map((sensor) => sensor.temperatureC)).toFixed(1)} °C`
+        : " | temperature n/a";
       console.log(
-        `[${latest.timestamp}] MemAvailable ${availableGiB} | target PSS ${formatMiB(latest.target.pssBytes)} | target RSS ${formatMiB(latest.target.rssBytes)} | processes ${latest.target.processCount}`
+        `[${latest.timestamp}] MemAvailable ${availableGiB} | target PSS ${formatMiB(latest.target.pssBytes)} | target RSS ${formatMiB(latest.target.rssBytes)} | processes ${latest.target.processCount}${hottest}`
       );
       if (Date.now() >= deadline) break;
       await sleep(Math.min(options.intervalSeconds * 1000, Math.max(0, deadline - Date.now())));
@@ -267,7 +303,7 @@ Options:
   --match=REGEX        Process command-line filter
   --help               Show this help
 
-The report records system MemAvailable/swap and target-process PSS/RSS.
+The report records MemAvailable/swap, target-process PSS/RSS and available Linux thermal zones.
 PSS is preferred for Chromium because it accounts proportionally for shared pages.
 It does not replace a physical test in the final mirror enclosure.`);
 }
@@ -290,6 +326,7 @@ module.exports = {
   parseMemoryInfo,
   parseSmapsRollup,
   parseStatusRss,
+  readThermalSensors,
   isTargetProcess,
   listProcessIds,
   readProcessMemory,
