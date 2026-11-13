@@ -109,12 +109,39 @@ Do not enable the kiosk unit at boot until you have confirmed how your desktop s
 
 ## 5. Network and security notes
 
+### Provision the Remote Control API key locally
+
+The tracked project configuration reads `MM_REMOTE_CONTROL_API_KEY` from the process environment. It contains no fallback key. With `secureEndpoints: true`, protected Remote Control operations remain unavailable when the variable is missing; do not work around this by disabling `secureEndpoints`.
+
+Create a local, untracked secret file on the **backend host**:
+
+```bash
+mkdir -p ~/.config/magicmirror
+chmod 700 ~/.config/magicmirror
+umask 077
+printf 'MM_REMOTE_CONTROL_API_KEY=%s\\n' "$(openssl rand -hex 32)" > ~/.config/magicmirror/secrets.env
+chmod 600 ~/.config/magicmirror/secrets.env
+```
+
+The server systemd unit loads this file through `EnvironmentFile=`. For a manual foreground run, load it into the shell first:
+
+```bash
+set -a
+. ~/.config/magicmirror/secrets.env
+set +a
+npm run server
+```
+
+Run `npm run server:device-check` in the same environment. It should report that the key is sourced from `MM_REMOTE_CONTROL_API_KEY`; it never prints the value. The display-only client does not need this secret file.
+
+**Rotation is required:** a previous API key was committed to the repository. Removing it from the current config does not erase it from Git history. Generate a new local key using the command above and replace the old key on the backend before enabling network access. Never paste the generated value into chat, commit it, or add the secret file to Git.
+
 - The kiosk uses the local configured address; remote-control clients use the device's LAN address and the effective MagicMirror port.
 - Keep `MMM-Remote-Control`'s `secureEndpoints: true`.
 - Keep a restrictive, correct `ipWhitelist`. Do not use an empty whitelist on a network-facing mirror unless unrestricted access is an intentional, reviewed decision.
 - Do not configure router port forwarding to the mirror or Spotify OAuth callback.
 - The Spotify OAuth callback (default 8888) is separate from the MagicMirror HTTP port and is only needed when running its authentication flow.
-- Do not put Spotify credentials, OAuth tokens, or Remote Control API keys in these unit files or deployment scripts.
+- Keep Spotify credentials and OAuth tokens out of the repository and unit files. The Remote Control API key is loaded only from the untracked local `MM_REMOTE_CONTROL_API_KEY` environment file described below.
 
 ## 6. Current limitations
 
