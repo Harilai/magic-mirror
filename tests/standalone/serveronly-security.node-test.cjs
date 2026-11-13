@@ -89,14 +89,14 @@ test("project configuration reads Remote Control API key from environment only",
 
 
 test("CPU flag parser reads x86 SSE4.2 features", () => {
-  const flags = parseCpuFlags("processor : 0\\nflags : fpu sse sse2 sse4_1 sse4_2 avx\\n");
+  const flags = parseCpuFlags(["processor : 0", "flags : fpu sse sse2 sse4_1 sse4_2 avx"].join("\\n"));
   assert.ok(flags.has("sse4_2"));
   assert.ok(flags.has("sse4_1"));
 });
 
 test("device check fails x86 Sharp preflight when SSE4.2 is unavailable", () => {
   const results = [];
-  const supported = checkSharpCpuFeatures("x64", "flags : fpu sse sse2 sse4_1\\n", results);
+  const supported = checkSharpCpuFeatures("x64", "flags : fpu sse sse2 sse4_1", results);
   assert.equal(supported, false);
   assert.equal(results[0].status, "FAIL");
   assert.equal(results[0].check, "sharp-cpu-features");
@@ -104,7 +104,7 @@ test("device check fails x86 Sharp preflight when SSE4.2 is unavailable", () => 
 
 test("device check accepts x86 Sharp preflight when SSE4.2 is available", () => {
   const results = [];
-  const supported = checkSharpCpuFeatures("x64", "flags : fpu sse sse2 sse4_1 sse4_2\\n", results);
+  const supported = checkSharpCpuFeatures("x64", "flags : fpu sse sse2 sse4_1 sse4_2", results);
   assert.equal(supported, true);
   assert.equal(results[0].status, "PASS");
   assert.equal(results[0].check, "sharp-cpu-features");
