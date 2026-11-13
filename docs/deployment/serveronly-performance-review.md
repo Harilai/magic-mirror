@@ -133,6 +133,22 @@ The compute unit is intended to sit behind the mirror glass. Acoustic output and
 **Current purchase filter:** do not buy a fan-cooled unit for the mirror enclosure. Prefer passive cooling and a shallower design; do not trade away RAM, storage reliability, Chromium support or thermal safety just to meet a low depth figure.
 
 
+## Repeatable Meteosat compute benchmark
+
+On each Linux candidate, from the MagicMirror checkout run:
+
+```bash
+npm run benchmark --prefix modules/MMM-Meteosat -- --source-size=1800 --render-size=700 --repeat=3
+```
+
+The benchmark creates a synthetic 1800 × 1800 PNG, invokes the real Sharp child worker, applies the same alpha mask and 700 px render limit as the mirror, and reports:
+- end-to-end duration and worker processing duration (min/median/max);
+- the child worker's peak RSS from Linux `process.resourceUsage().maxRSS`;
+- input/output file sizes and resulting dimensions;
+- Node version, CPU model and architecture.
+
+Use the same source/render/repeat settings on every candidate. Do not compare a 600 px CI smoke run with an 1800 px device run. The benchmark isolates the Meteosat image-processing path; it does **not** include Chromium, MagicMirror's server, GPU memory, the complete desktop session, or thermal behaviour inside the mirror cavity. Pair it with `server:resource-monitor` while the full frontend is running. CI exercises a small 600 → 300 px smoke run to verify the benchmark path, not to set a hardware performance baseline.
+
 ## Runtime resource monitor
 
 Start the backend and Chromium kiosk first, then run this from a second terminal or SSH session on the same Linux device:
