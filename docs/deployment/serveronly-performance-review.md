@@ -88,13 +88,22 @@ The new `server:resource-monitor` command samples Linux `MemAvailable`/swap, PSS
 
 ## Hardware implications
 
-### First x86 candidate: Dell Wyse 5070
+### First x86 candidate: HP t430
 
-The standard Wyse 5070 variants use Intel Celeron J4105 or Pentium Silver J5005, UHD 600/605 graphics, 4/8 GB RAM configurations, DisplayPort outputs, Gigabit Ethernet, and optional WLAN. Community reports describe Debian running successfully on a 4 GB / 32 GB eMMC unit. Its x86-64 architecture is the lower-risk Node.js and Sharp route, but confirm the exact CPU, RAM, storage, PSU and Wi-Fi option on the listing. It needs DisplayPort-to-HDMI for the mirror controller.
+The HP t430 is the best physical/software balance found so far for a single-device installation: 135 × 135 × 32 mm (0.58 L), approximately 416 g, fanless according to HP's product literature, and native HDMI. Look for the Celeron N4000 (2 cores), 4 GB embedded DDR4 and 32 GB eMMC SKU. HP also sold 2 GB / 16 GB ThinPro configurations; those are not acceptable for this deployment. Wireless is optional on some SKUs, so confirm the Wi-Fi module or plan to use Ethernet.
 
-### Budget wildcard: Fujitsu Futro S920
+The N4000's UHD 600 is a newer graphics generation than the Z83-F's Atom x5-Z8350, but this remains an entry-level dual-core platform and the memory/eMMC are not upgradeable. Current used listings around €50 plus delivery are above the €40 delivered ceiling; this is a watch-list candidate, not a buy recommendation. Its exact CPU flags, Chromium acceleration and full mirror performance must pass the device checks.
 
-A homelab user reported buying S920 units with a quad-core AMD CPU, 4 GB RAM and 64 GB SSD for under €40, but that is a community report rather than a current Spanish offer or a MagicMirror test. Other listings may have only 2 GB RAM, small flash storage and no power supply. The model has DisplayPort and DVI-I rather than native HDMI; WLAN was optional. Treat it as a conditional bargain only when the complete bundle is documented.
+Sources: [HP t430 specifications and dimensions](https://h20195.www2.hp.com/v2/GetDocument.aspx?docname=4AA7-2899ENUC), [HP fanless product brochure](https://inquirecontent1.ingrammicro.com/Manufacturer-Brochure/1048745626.pdf), [used 4 GB / 32 GB listing](https://www.marktplaats.nl/v/computers-en-software/desktop-pc-s/m2452276202-hp-t430-thin-client-compacte-en-efficiente-mini-pc).
+
+### Secondary x86 candidate: Minisforum Z83-F
+
+The Z83-F is smaller at 120 × 120 × 27 mm and fanless, with a nominal 4 GB / 64 GB eMMC configuration and HDMI. However, a detailed Linux Mint user report describes sluggish browsing, page-scroll lag and poor YouTube performance on its Atom x5-Z8350. It is not the preferred combined Serveronly + Chromium host without a real target-device test. Current used listings around €50 plus shipping are also above budget.
+
+### Larger fallback: Dell Wyse 5070
+
+The standard Wyse 5070 variants use Intel Celeron J4105 or Pentium Silver J5005, UHD 600/605 graphics, 4/8 GB RAM configurations, DisplayPort outputs, Gigabit Ethernet and optional WLAN. Community reports describe Debian running successfully on a 4 GB / 32 GB eMMC unit. Its x86-64 architecture is a lower-risk Node.js and Sharp route, but its 184 × 184 × 35.6 mm chassis is mechanically bulky; it is suitable only if mounted on the rear frame outside the shallow cavity.
+
 
 ### ARM boards
 
@@ -104,10 +113,10 @@ Users in the MagicMirror community report running alternative boards such as Le 
 
 - Do not buy a board yet.
 - Keep x86-64 thin clients and ARM64 boards in the shortlist, but require at least 4 GB RAM for the preferred single-device setup unless a real-device benchmark proves 2 GB adequate.
-- First implement and test the Meteosat output resize and in-place alpha-mask optimization, then reduce duplicate buffering in WMS downloads.
-- Then benchmark the complete mirror at 1920 × 1080 and use the results to set a defensible minimum RAM/CPU specification.
+- Meteosat browser-output resize (1800 → 700), in-place alpha-mask processing and streamed WMS/overlay downloads are implemented and CI-tested.
+- The Linux resource monitor and target-device Sharp benchmark are implemented; the remaining sizing work is to run them against the full 1920 × 1080 mirror on the actual candidate hardware.
 
-This review is static. It does not certify any board, guarantee a memory figure, or imply that the proposed optimizations have already been implemented.
+This review combines source analysis and CI-tested changes. It does not certify a physical board, guarantee a memory figure, or prove 1920 × 1080 Chromium acceleration or stable overnight operation.
 
 
 ## Compact and silent installation constraints
@@ -121,15 +130,14 @@ The compute unit is intended to sit behind the mirror glass. Acoustic output and
 - **Thermal envelope:** test with the actual rear cavity, panel heat and ambient temperature. A fanless unit can throttle when installed in a closed, warm cavity even if it is quiet on an open desk.
 
 ### Hardware candidates with acoustic/size evidence
-
 | Candidate | Cooling / physical evidence | Practical status |
 |---|---|---|
-| Dell Wyse 5070 Standard | Community teardown/review describes the standard chassis as all-passive; official dimensions are 184 × 184 × 35.6 mm. Independent idle measurements around 2.7 W headless and 5.6 W with monitor are reported, depending on configuration. | Silent and efficient, but the 184 mm square footprint is bulky behind a mirror. Keep as a fallback if it can be mounted on the rear frame outside the display cavity. |
-| Dell Wyse 3040 | 101.6 × 101.6 × 27.94 mm; Atom x5-Z8350, soldered 2 GB RAM and 8/16 GB eMMC in Dell documentation. | Thin and very compact, but the fixed 2 GB RAM and small storage make it a risky MagicMirror candidate. Not approved without a full workload test. |
-| Minisforum Z83-F | Fanless Atom x5-Z8350; 4 GB RAM, 64 GB eMMC, HDMI; 120 × 120 × 27 mm. | Best x86 compact/passive candidate found, but used listings are €45–50 before shipping; outside the current all-in budget. |
-| Fujitsu FUTRO S940 | Fanless J5005 variants exist with 4/8 GB RAM; 250 × 193 × 52 mm and ventilation clearance requirements. | Exclude for the behind-glass installation: too deep and large. |
-| ARM64 SBC with passive case | Smallest likely form factor and can be fanless. | High integration risk: exact maintained OS image, Chromium graphics acceleration, Wi-Fi, Sharp, and sustained thermal behaviour must be checked per board. |
-
+| HP t430 | 135 × 135 × 32 mm; HP product literature describes fanless cooling; N4000 dual-core, 4 GB embedded DDR4 / 32 GB eMMC SKU, native HDMI, UHD 600; Wi-Fi optional. | Best current compact single-device candidate; exact 4 GB / 32 GB SKU required. Current used listings around €50 plus shipping are over budget. |
+| Minisforum Z83-F | Fanless Atom x5-Z8350; nominal 4 GB / 64 GB eMMC, HDMI; 120 × 120 × 27 mm. | Smaller but weaker browser-performance reports and current used listings around €50 plus shipping. Secondary watch-list candidate only. |
+| Dell Wyse 5070 Standard | Passive x86-64; J4105/J5005; 4–8 GB RAM; 184 × 184 × 35.6 mm. | Technically more flexible but large square footprint; fallback only if mounted outside the shallow cavity. |
+| Dell Wyse 3040 | 101.6 × 101.6 × 27.94 mm; Atom x5-Z8350, soldered 2 GB RAM and 8/16 GB eMMC. | Too little memory and storage; exclude. |
+| Fujitsu FUTRO S940 | Fanless J5005 variants exist with 4/8 GB RAM; 250 × 193 × 52 mm and ventilation clearance requirements. | Too deep and large for the behind-glass installation. |
+| ARM64 SBC with passive case | Smallest possible footprint and fanless case. | High integration risk: exact maintained OS image, accelerated Chromium, Wi-Fi, Sharp and sustained thermal behaviour must be tested per board. |
 **Current purchase filter:** do not buy a fan-cooled unit for the mirror enclosure. Prefer passive cooling and a shallower design; do not trade away RAM, storage reliability, Chromium support or thermal safety just to meet a low depth figure.
 
 
@@ -188,13 +196,14 @@ The split-server layout remains the more promising route for a compact client, b
 
 ## Current software validation status
 
-At commit `b5f0b904eecd01446d1ebd76909c5cd2d1fc5735`, GitHub Actions on Ubuntu 24.04 with Node.js 22.22.2 passed:
-- 55/55 MMM-Meteosat tests, including downsampling, alpha-mask equivalence, streamed WMS downloads, bounded response sizes, abort cleanup, and overlay cache writes.
-- 18/18 standalone deployment tests, including PSS parsing, thermal-zone readings, monitor self-exclusion, remote kiosk URL validation/readiness, and environment-sourced Remote Control secret checks.
+At commit `45a4b1c039648fb8dc2af22f14a5e302722456ee`, GitHub Actions on Ubuntu 24.04 with Node.js 22.22.2 passed:
+- 58/58 MMM-Meteosat tests, including render-size regeneration, alpha-mask pixel equivalence, streamed WMS/overlay downloads, response size limits, abort cleanup and benchmark output.
+- 22/22 standalone deployment tests, including resource PSS parsing, thermal-zone readings, monitor self-exclusion, x86 SSE4.2 gating, environment-sourced Remote Control secret checks and remote kiosk readiness.
+- Full-size synthetic Sharp benchmark smoke run: 1800 × 1800 source → 700 × 700 output; 164 ms end-to-end, 99 ms in the worker and 83,900 KB worker max RSS on an AMD EPYC 9V74 hosted runner.
 
-[Latest CI run](https://github.com/Harilai/magic-mirror/actions/runs/43437528692).
+[CI run with full-size benchmark and all tests](https://github.com/Harilai/magic-mirror/actions/runs/43439082018).
 
-This is CI validation on x86-64 Linux. It is not a 1080p browser visual test, ARM build test, physical thermal test, or overnight reliability test.
+The benchmark input is synthetic and the runner is a hosted x86-64 server. These results verify the processing path; they are not a prediction for a low-power N4000, ARM board, Chromium, GPU memory, complete OS, thermal cavity or overnight reliability.
 
 
 ## Security gate before deployment
