@@ -89,7 +89,7 @@ test("project configuration reads Remote Control API key from environment only",
 
 
 test("CPU flag parser reads x86 SSE4.2 features", () => {
-  const flags = parseCpuFlags(["processor : 0", "flags : fpu sse sse2 sse4_1 sse4_2 avx"].join("\\n"));
+  const flags = parseCpuFlags(["processor : 0", "flags : fpu sse sse2 sse4_1 sse4_2 avx"].join(String.fromCharCode(10)));
   assert.ok(flags.has("sse4_2"));
   assert.ok(flags.has("sse4_1"));
 });
