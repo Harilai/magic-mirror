@@ -151,12 +151,11 @@ function readProcessMemory(pid, { procRoot = "/proc", matcher } = {}) {
   }
 }
 
-function collectTargetProcesses({ procRoot = "/proc", matcher = new RegExp(DEFAULT_MATCH, "i") } = {}) {
+function collectTargetProcesses({ procRoot = "/proc", matcher = new RegExp(DEFAULT_MATCH, "i"), excludePid = process.pid } = {}) {
   const results = [];
-  const monitorPid = procRoot === "/proc" ? process.pid : null;
   for (const pid of listProcessIds(procRoot)) {
     // Do not include this sampler in its own MagicMirror/Chromium resource totals.
-    if (monitorPid !== null && pid === monitorPid) continue;
+    if (excludePid !== null && pid === excludePid) continue;
     const process = readProcessMemory(pid, { procRoot, matcher });
     if (process) results.push(process);
   }
