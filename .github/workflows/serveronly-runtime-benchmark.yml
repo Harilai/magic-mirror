@@ -80,7 +80,15 @@ jobs:
 
       - name: Launch Chromium kiosk in Xvfb
         run: |
-          export MM_BROWSER_BIN="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          CHROMIUM_BIN="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          # GitHub's Ubuntu runner restricts unprivileged user namespaces; use
+          # no-sandbox only in this disposable CI container, never on the device.
+          cat > /tmp/chromium-ci-wrapper <<EOF
+          #!/usr/bin/env bash
+          exec "$CHROMIUM_BIN" --no-sandbox "$@"
+          EOF
+          chmod +x /tmp/chromium-ci-wrapper
+          export MM_BROWSER_BIN=/tmp/chromium-ci-wrapper
           xvfb-run --auto-servernum npm run server:kiosk > benchmark-results/kiosk.log 2>&1 &
           echo $! > benchmark-results/kiosk.pid
           sleep 20
