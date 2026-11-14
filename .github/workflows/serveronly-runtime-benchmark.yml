@@ -1,0 +1,130 @@
+name: Serveronly runtime benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/magicmirror-serveronly-deployment
+    paths:
+      - "config/config.js"
+      - "defaultmodules/**"
+      - "modules/MMM-Meteosat/**"
+      - "modules/MMM-Spotify/**"
+      - "modules/MMM-Remote-Control/**"
+      - "modules/MMM-MagicMover/**"
+      - "modules/MMM-TodayEvents/**"
+      - "scripts/serveronly-resource-monitor.js"
+      - "scripts/serveronly-kiosk.js"
+      - "serveronly/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/serveronly-runtime-benchmark.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.2"
+          cache: npm
+
+      - name: Install Linux display dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth
+
+      - name: Install MagicMirror dependencies
+        run: |
+          npm ci --omit=optional --no-audit --no-fund
+          npx playwright install chromium
+          npm ci --prefix modules/MMM-Meteosat --no-audit --no-fund
+          npm install --prefix modules/MMM-Spotify --omit=dev --no-audit --no-fund
+          npm install --prefix modules/MMM-Remote-Control --omit=dev --no-audit --no-fund
+
+      - name: Start MagicMirror Serveronly
+        env:
+          MM_REMOTE_CONTROL_API_KEY: ${{ secrets.MM_REMOTE_CONTROL_API_KEY }}
+        run: |
+          # Use a one-run key when no repository secret is configured.
+          if [ -z "$MM_REMOTE_CONTROL_API_KEY" ]; then
+            export MM_REMOTE_CONTROL_API_KEY="$(openssl rand -hex 32)"
+          fi
+          mkdir -p benchmark-results
+          npm run server > benchmark-results/server.log 2>&1 &
+          echo $! > benchmark-results/server.pid
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:8080/ >/dev/null; then
+              echo "MagicMirror Serveronly is ready."
+              exit 0
+            fi
+            if ! kill -0 "$(cat benchmark-results/server.pid)" 2>/dev/null; then
+              cat benchmark-results/server.log
+              exit 1
+            fi
+            sleep 1
+          done
+          cat benchmark-results/server.log
+          echo "Serveronly did not become ready within 60 seconds."
+          exit 1
+
+      - name: Launch Chromium kiosk in Xvfb
+        run: |
+          export MM_BROWSER_BIN="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          xvfb-run --auto-servernum npm run server:kiosk > benchmark-results/kiosk.log 2>&1 &
+          echo $! > benchmark-results/kiosk.pid
+          sleep 20
+          if ! pgrep -af 'chrome|chromium' >/dev/null; then
+            cat benchmark-results/kiosk.log
+            exit 1
+          fi
+
+      - name: Measure full application process memory
+        run: |
+          npm run server:resource-monitor -- --duration=120 --interval=2 --output=benchmark-results/runtime-resources.json
+          node <<'NODE'
+          const fs = require("node:fs");
+          const report = JSON.parse(fs.readFileSync("benchmark-results/runtime-resources.json", "utf8"));
+          const summary = report.summary;
+          if (!summary.sampleCount || !Number.isFinite(summary.peakTargetPssBytes)) {
+            throw new Error("No usable process PSS samples were collected.");
+          }
+          const mib = (bytes) => (bytes / 1024 / 1024).toFixed(1);
+          console.log("Runtime benchmark summary:");
+          console.log(JSON.stringify({
+            samples: summary.sampleCount,
+            peakTargetPssMiB: mib(summary.peakTargetPssBytes),
+            peakTargetRssMiB: mib(summary.peakTargetRssBytes),
+            minimumMemAvailableMiB: mib(summary.minimumMemAvailableBytes),
+            peakProcessCount: summary.peakTargetProcessCount,
+            peakTemperaturesC: summary.peakTemperaturesC,
+            peakProcesses: summary.peakPssProcesses
+          }, null, 2));
+          NODE
+
+      - name: Stop benchmark processes
+        if: always()
+        run: |
+          if [ -f benchmark-results/kiosk.pid ]; then
+            kill "$(cat benchmark-results/kiosk.pid)" 2>/dev/null || true
+          fi
+          if [ -f benchmark-results/server.pid ]; then
+            kill "$(cat benchmark-results/server.pid)" 2>/dev/null || true
+          fi
+
+      - name: Upload runtime benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: magicmirror-runtime-benchmark
+          path: benchmark-results/
+          if-no-files-found: warn
+          retention-days: 14
