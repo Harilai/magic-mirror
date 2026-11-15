@@ -41,7 +41,7 @@ jobs:
         run: |
           mkdir -p benchmark-results
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth imagemagick flatpak
+          sudo apt-get install -y xvfb xauth imagemagick flatpak dbus-x11
           sudo flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           sudo flatpak install --system --noninteractive -y flathub io.github.ungoogled_software.ungoogled_chromium
           flatpak info --system io.github.ungoogled_software.ungoogled_chromium | tee benchmark-results/browser-info.txt
@@ -149,7 +149,7 @@ jobs:
           # terms dialog; it is used only in CI, not selected as target hardware.
           cat > /tmp/chromium-ci-wrapper <<'EOF'
           #!/usr/bin/env bash
-          exec flatpak run --system io.github.ungoogled_software.ungoogled_chromium --no-sandbox --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 "$@"
+          exec dbus-run-session -- flatpak run --system io.github.ungoogled_software.ungoogled_chromium --no-sandbox --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 "$@"
           EOF
           chmod +x /tmp/chromium-ci-wrapper
 
