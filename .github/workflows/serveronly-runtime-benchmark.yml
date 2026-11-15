@@ -40,7 +40,7 @@ jobs:
       - name: Install Linux display dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth
+          sudo apt-get install -y xvfb xauth imagemagick
 
       - name: Install MagicMirror dependencies
         run: |
@@ -159,7 +159,7 @@ jobs:
             --setenv="PATH=${PATH}" \
             --setenv="HOME=${HOME}" \
             --setenv="MM_BROWSER_BIN=/tmp/chromium-ci-wrapper" \
-            /bin/bash -c 'xvfb-run --auto-servernum npm run server:kiosk >> benchmark-results/kiosk.log 2>&1'
+            /bin/bash -c 'xvfb-run --server-num=99 --server-args="-screen 0 1920x1080x24 -nolisten tcp" npm run server:kiosk >> benchmark-results/kiosk.log 2>&1'
 
           sleep 20
           if ! systemctl is-active --quiet magicmirror-kiosk.service || ! pgrep -af 'chrome|chromium' >/dev/null; then
@@ -167,6 +167,13 @@ jobs:
             cat benchmark-results/kiosk.log || true
             exit 1
           fi
+
+          # Capture the actual kiosk X11 framebuffer at the intended Full HD
+          # panel resolution. This is visual-regression evidence, not a
+          # headless-browser substitute.
+          sleep 10
+          DISPLAY=:99 import -window root -silent benchmark-results/kiosk-screen-1920x1080.png
+          identify benchmark-results/kiosk-screen-1920x1080.png
 
       - name: Measure application for 10 minutes under 1 GiB limit
         run: |
