@@ -150,6 +150,19 @@ jobs:
           EOF
           chmod +x /tmp/chromium-ci-wrapper
 
+          # Keep a fixed Full HD X server alive for the kiosk and screenshot
+          # step. TCP is disabled; -ac allows the runner user to capture the
+          # framebuffer without carrying xvfb-run's temporary Xauthority.
+          sudo systemd-run --quiet --collect \
+            --unit=magicmirror-xvfb \
+            --slice=magicmirror-benchmark.slice \
+            /usr/bin/Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp -ac
+          sleep 2
+          if ! systemctl is-active --quiet magicmirror-xvfb.service; then
+            sudo journalctl -u magicmirror-xvfb.service --no-pager -n 50 || true
+            exit 1
+          fi
+
           sudo systemd-run --quiet --collect \
             --unit=magicmirror-kiosk \
             --slice=magicmirror-benchmark.slice \
@@ -158,9 +171,9 @@ jobs:
             --property="WorkingDirectory=${GITHUB_WORKSPACE}" \
             --setenv="PATH=${PATH}" \
             --setenv="HOME=${HOME}" \
+            --setenv="DISPLAY=:99" \
             --setenv="MM_BROWSER_BIN=/tmp/chromium-ci-wrapper" \
-            --setenv="MM_KIOSK_DISABLE_BREAKPAD=1" \
-            /bin/bash -c 'xvfb-run --server-num=99 --server-args="-screen 0 1920x1080x24 -nolisten tcp" npm run server:kiosk >> benchmark-results/kiosk.log 2>&1'
+            /bin/bash -c 'npm run server:kiosk >> benchmark-results/kiosk.log 2>&1'
 
           sleep 20
           if ! systemctl is-active --quiet magicmirror-kiosk.service || ! pgrep -af 'chrome|chromium' >/dev/null; then
@@ -241,7 +254,7 @@ jobs:
       - name: Stop benchmark services
         if: always()
         run: |
-          sudo systemctl stop magicmirror-kiosk.service magicmirror-server.service 2>/dev/null || true
+          sudo systemctl stop magicmirror-kiosk.service magicmirror-server.service magicmirror-xvfb.service 2>/dev/null || true
           sudo systemctl stop magicmirror-benchmark.slice 2>/dev/null || true
           sudo systemctl daemon-reload || true
 
