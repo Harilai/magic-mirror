@@ -39,6 +39,7 @@ jobs:
 
       - name: Install Linux display dependencies
         run: |
+          mkdir -p benchmark-results
           sudo apt-get update
           sudo apt-get install -y xvfb xauth imagemagick flatpak
           sudo flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
