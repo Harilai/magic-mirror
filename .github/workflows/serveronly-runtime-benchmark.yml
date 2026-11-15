@@ -201,8 +201,14 @@ jobs:
           }
           console.log(JSON.stringify({ url: page.url, title: page.title }, null, 2));
           NODE
-          DISPLAY=:99 import -window root -silent benchmark-results/kiosk-screen-1920x1080.png
-          identify benchmark-results/kiosk-screen-1920x1080.png
+          # Sample the real kiosk framebuffer over the first 70 seconds so that
+          # Meteosat's initial image fetch and the module's display transitions
+          # are represented. The screenshot is never used to drive the UI.
+          for frame in 01 02 03 04 05; do
+            DISPLAY=:99 import -window root -silent "benchmark-results/kiosk-screen-${frame}.png"
+            sleep 15
+          done
+          identify benchmark-results/kiosk-screen-*.png
 
       - name: Measure application for 10 minutes under 1 GiB limit
         run: |
@@ -211,6 +217,12 @@ jobs:
           CGROUP_PATH="/sys/fs/cgroup${CGROUP_REL}"
 
           npm run server:resource-monitor -- --duration=600 --interval=2 --output=benchmark-results/runtime-resources.json
+
+          # Capture a final Full HD frame after the complete memory window,
+          # when the Meteosat image and other initial module data have loaded.
+          DISPLAY=:99 import -window root -silent benchmark-results/kiosk-screen-final.png
+          curl --silent --show-error --fail http://127.0.0.1:9222/json/list > benchmark-results/browser-targets-final.json
+          identify benchmark-results/kiosk-screen-final.png
 
           # Capture cgroup-level accounting (the hard limit applies to the
           # combined Node.js, Xvfb, kiosk launcher and Chromium process tree).
