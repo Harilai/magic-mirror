@@ -1,4 +1,4 @@
-name: Serveronly runtime benchmark
+name: Serveronly runtime benchmark (1 GiB cgroup)
 
 on:
   workflow_dispatch:
@@ -26,7 +26,7 @@ permissions:
 jobs:
   runtime-benchmark:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -52,54 +52,146 @@ jobs:
           npm install --prefix modules/MMM-Spotify --omit=dev --no-audit --no-fund
           npm install --prefix modules/MMM-Remote-Control --omit=dev --no-audit --no-fund
 
-      - name: Start MagicMirror Serveronly
+      - name: Configure strict 1 GiB cgroup v2 limit
+        run: |
+          set -euo pipefail
+          mkdir -p benchmark-results
+
+          if ! grep -qw memory /sys/fs/cgroup/cgroup.controllers; then
+            echo "The runner does not expose the cgroup v2 memory controller." >&2
+            cat /sys/fs/cgroup/cgroup.controllers >&2 || true
+            exit 1
+          fi
+          if ! command -v systemd-run >/dev/null || ! systemctl show-environment >/dev/null 2>&1; then
+            echo "systemd is unavailable; refusing to run an unconstrained benchmark." >&2
+            exit 1
+          fi
+
+          sudo tee /run/systemd/system/magicmirror-benchmark.slice >/dev/null <<'EOF'
+          [Unit]
+          Description=MagicMirror benchmark constrained memory slice
+
+          [Slice]
+          MemoryAccounting=yes
+          MemoryMax=1G
+          MemorySwapMax=0
+          EOF
+
+          sudo systemctl daemon-reload
+          sudo systemctl start magicmirror-benchmark.slice
+
+          CGROUP_REL="$(systemctl show --property=ControlGroup --value magicmirror-benchmark.slice)"
+          CGROUP_PATH="/sys/fs/cgroup${CGROUP_REL}"
+          test -n "${CGROUP_REL}"
+          test -f "${CGROUP_PATH}/memory.max"
+          test -f "${CGROUP_PATH}/memory.swap.max"
+
+          MEMORY_MAX="$(sudo cat "${CGROUP_PATH}/memory.max")"
+          SWAP_MAX="$(sudo cat "${CGROUP_PATH}/memory.swap.max")"
+          test "${MEMORY_MAX}" = "1073741824"
+          test "${SWAP_MAX}" = "0"
+
+          {
+            echo "cgroup_version=2"
+            echo "cgroup_path=${CGROUP_PATH}"
+            echo "memory.max=${MEMORY_MAX}"
+            echo "memory.swap.max=${SWAP_MAX}"
+            echo "memory_limit=1 GiB"
+            echo "swap_limit=0 bytes"
+          } | tee benchmark-results/cgroup-config.txt
+
+      - name: Start MagicMirror Serveronly inside constrained slice
         env:
           MM_REMOTE_CONTROL_API_KEY: ${{ secrets.MM_REMOTE_CONTROL_API_KEY }}
         run: |
+          set -euo pipefail
           # Use a one-run key when no repository secret is configured.
-          if [ -z "$MM_REMOTE_CONTROL_API_KEY" ]; then
+          if [ -z "${MM_REMOTE_CONTROL_API_KEY}" ]; then
             export MM_REMOTE_CONTROL_API_KEY="$(openssl rand -hex 32)"
           fi
-          mkdir -p benchmark-results
-          npm run server > benchmark-results/server.log 2>&1 &
-          echo $! > benchmark-results/server.pid
+
+          sudo systemd-run --quiet --collect \
+            --unit=magicmirror-server \
+            --slice=magicmirror-benchmark.slice \
+            --property="User=$(id -un)" \
+            --property="Group=$(id -gn)" \
+            --property="WorkingDirectory=${GITHUB_WORKSPACE}" \
+            --setenv="PATH=${PATH}" \
+            --setenv="HOME=${HOME}" \
+            --setenv="MM_REMOTE_CONTROL_API_KEY=${MM_REMOTE_CONTROL_API_KEY}" \
+            /bin/bash -c 'npm run server >> benchmark-results/server.log 2>&1'
+
           for attempt in $(seq 1 60); do
             if curl --silent --fail http://127.0.0.1:8080/ >/dev/null; then
               echo "MagicMirror Serveronly is ready."
               exit 0
             fi
-            if ! kill -0 "$(cat benchmark-results/server.pid)" 2>/dev/null; then
-              cat benchmark-results/server.log
+            if ! systemctl is-active --quiet magicmirror-server.service; then
+              sudo journalctl -u magicmirror-server.service --no-pager -n 100 || true
+              cat benchmark-results/server.log || true
               exit 1
             fi
             sleep 1
           done
-          cat benchmark-results/server.log
+          sudo journalctl -u magicmirror-server.service --no-pager -n 100 || true
+          cat benchmark-results/server.log || true
           echo "Serveronly did not become ready within 60 seconds."
           exit 1
 
-      - name: Launch Chromium kiosk in Xvfb
+      - name: Launch Chromium kiosk inside constrained slice
         run: |
+          set -euo pipefail
           CHROMIUM_BIN="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
           # GitHub's Ubuntu runner restricts unprivileged user namespaces; use
-          # no-sandbox only in this disposable CI container, never on the device.
+          # no-sandbox only in this disposable CI environment, never on the device.
           cat > /tmp/chromium-ci-wrapper <<EOF
           #!/usr/bin/env bash
-          exec "$CHROMIUM_BIN" --no-sandbox "$@"
+          exec "${CHROMIUM_BIN}" --no-sandbox "$@"
           EOF
           chmod +x /tmp/chromium-ci-wrapper
-          export MM_BROWSER_BIN=/tmp/chromium-ci-wrapper
-          xvfb-run --auto-servernum npm run server:kiosk > benchmark-results/kiosk.log 2>&1 &
-          echo $! > benchmark-results/kiosk.pid
+
+          sudo systemd-run --quiet --collect \
+            --unit=magicmirror-kiosk \
+            --slice=magicmirror-benchmark.slice \
+            --property="User=$(id -un)" \
+            --property="Group=$(id -gn)" \
+            --property="WorkingDirectory=${GITHUB_WORKSPACE}" \
+            --setenv="PATH=${PATH}" \
+            --setenv="HOME=${HOME}" \
+            --setenv="MM_BROWSER_BIN=/tmp/chromium-ci-wrapper" \
+            /bin/bash -c 'xvfb-run --auto-servernum npm run server:kiosk >> benchmark-results/kiosk.log 2>&1'
+
           sleep 20
-          if ! pgrep -af 'chrome|chromium' >/dev/null; then
-            cat benchmark-results/kiosk.log
+          if ! systemctl is-active --quiet magicmirror-kiosk.service || ! pgrep -af 'chrome|chromium' >/dev/null; then
+            sudo journalctl -u magicmirror-kiosk.service --no-pager -n 100 || true
+            cat benchmark-results/kiosk.log || true
             exit 1
           fi
 
-      - name: Measure full application process memory
+      - name: Measure application for 10 minutes under 1 GiB limit
         run: |
-          npm run server:resource-monitor -- --duration=120 --interval=2 --output=benchmark-results/runtime-resources.json
+          set -euo pipefail
+          CGROUP_REL="$(systemctl show --property=ControlGroup --value magicmirror-benchmark.slice)"
+          CGROUP_PATH="/sys/fs/cgroup${CGROUP_REL}"
+
+          npm run server:resource-monitor -- --duration=600 --interval=2 --output=benchmark-results/runtime-resources.json
+
+          # Capture cgroup-level accounting (the hard limit applies to the
+          # combined Node.js, Xvfb, kiosk launcher and Chromium process tree).
+          {
+            echo "memory.max=$(sudo cat "${CGROUP_PATH}/memory.max")"
+            echo "memory.swap.max=$(sudo cat "${CGROUP_PATH}/memory.swap.max")"
+            echo "memory.current=$(sudo cat "${CGROUP_PATH}/memory.current")"
+            echo "memory.peak=$(sudo cat "${CGROUP_PATH}/memory.peak")"
+            echo "--- memory.events ---"
+            sudo cat "${CGROUP_PATH}/memory.events"
+            echo "--- memory.stat ---"
+            sudo cat "${CGROUP_PATH}/memory.stat"
+          } | tee benchmark-results/cgroup-memory.txt
+
+          sudo journalctl -u magicmirror-server.service --no-pager > benchmark-results/server-journal.log || true
+          sudo journalctl -u magicmirror-kiosk.service --no-pager > benchmark-results/kiosk-journal.log || true
+
           node <<'NODE'
           const fs = require("node:fs");
           const report = JSON.parse(fs.readFileSync("benchmark-results/runtime-resources.json", "utf8"));
@@ -108,7 +200,7 @@ jobs:
             throw new Error("No usable process PSS samples were collected.");
           }
           const mib = (bytes) => (bytes / 1024 / 1024).toFixed(1);
-          console.log("Runtime benchmark summary:");
+          console.log("10-minute constrained runtime benchmark summary:");
           console.log(JSON.stringify({
             samples: summary.sampleCount,
             peakTargetPssMiB: mib(summary.peakTargetPssBytes),
@@ -120,21 +212,36 @@ jobs:
           }, null, 2));
           NODE
 
-      - name: Stop benchmark processes
-        if: always()
-        run: |
-          if [ -f benchmark-results/kiosk.pid ]; then
-            kill "$(cat benchmark-results/kiosk.pid)" 2>/dev/null || true
+          if ! curl --silent --fail http://127.0.0.1:8080/ >/dev/null; then
+            echo "Serveronly became unavailable during the constrained measurement." >&2
+            exit 1
           fi
-          if [ -f benchmark-results/server.pid ]; then
-            kill "$(cat benchmark-results/server.pid)" 2>/dev/null || true
+          if ! systemctl is-active --quiet magicmirror-kiosk.service; then
+            echo "The kiosk service did not survive the constrained measurement." >&2
+            exit 1
           fi
 
-      - name: Upload runtime benchmark report
+          OOM_EVENTS="$(sudo awk '$1 == "oom" {print $2}' "${CGROUP_PATH}/memory.events")"
+          OOM_KILLS="$(sudo awk '$1 == "oom_kill" {print $2}' "${CGROUP_PATH}/memory.events")"
+          OOM_EVENTS="${OOM_EVENTS:-0}"
+          OOM_KILLS="${OOM_KILLS:-0}"
+          if [ "${OOM_EVENTS}" -ne 0 ] || [ "${OOM_KILLS}" -ne 0 ]; then
+            echo "Memory pressure triggered OOM events: oom=${OOM_EVENTS}, oom_kill=${OOM_KILLS}" >&2
+            exit 1
+          fi
+
+      - name: Stop benchmark services
+        if: always()
+        run: |
+          sudo systemctl stop magicmirror-kiosk.service magicmirror-server.service 2>/dev/null || true
+          sudo systemctl stop magicmirror-benchmark.slice 2>/dev/null || true
+          sudo systemctl daemon-reload || true
+
+      - name: Upload constrained runtime benchmark report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: magicmirror-runtime-benchmark
+          name: magicmirror-runtime-benchmark-1gb
           path: benchmark-results/
           if-no-files-found: warn
           retention-days: 14
