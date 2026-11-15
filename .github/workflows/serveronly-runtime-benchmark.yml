@@ -159,6 +159,7 @@ jobs:
             --setenv="PATH=${PATH}" \
             --setenv="HOME=${HOME}" \
             --setenv="MM_BROWSER_BIN=/tmp/chromium-ci-wrapper" \
+            --setenv="MM_KIOSK_DISABLE_BREAKPAD=1" \
             /bin/bash -c 'xvfb-run --server-num=99 --server-args="-screen 0 1920x1080x24 -nolisten tcp" npm run server:kiosk >> benchmark-results/kiosk.log 2>&1'
 
           sleep 20
