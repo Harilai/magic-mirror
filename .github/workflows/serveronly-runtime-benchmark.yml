@@ -40,14 +40,16 @@ jobs:
       - name: Install Linux display dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth imagemagick
+          sudo apt-get install -y xvfb xauth imagemagick flatpak
+          sudo flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install --system --noninteractive -y flathub io.github.ungoogled_software.ungoogled_chromium
+          flatpak info --system io.github.ungoogled_software.ungoogled_chromium | tee benchmark-results/browser-info.txt
 
       - name: Install MagicMirror dependencies
         run: |
           # The repository lockfile currently lags package.json (notably MSW).
           # Resolve from package.json in this clean runner rather than failing npm ci.
           npm install --include=dev --omit=optional --no-audit --no-fund
-          npx playwright install chromium
           npm ci --prefix modules/MMM-Meteosat --no-audit --no-fund
           npm install --prefix modules/MMM-Spotify --omit=dev --no-audit --no-fund
           npm install --prefix modules/MMM-Remote-Control --omit=dev --no-audit --no-fund
@@ -141,12 +143,12 @@ jobs:
       - name: Launch Chromium kiosk inside constrained slice
         run: |
           set -euo pipefail
-          CHROMIUM_BIN="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
-          # GitHub's Ubuntu runner restricts unprivileged user namespaces; use
-          # no-sandbox only in this disposable CI environment, never on the device.
-          cat > /tmp/chromium-ci-wrapper <<EOF
+          # Use Flathub's ungoogled Chromium build for the visual test. It is
+          # an open-source Chromium build without Google's additional Chrome
+          # terms dialog; it is used only in CI, not selected as target hardware.
+          cat > /tmp/chromium-ci-wrapper <<'EOF'
           #!/usr/bin/env bash
-          exec "${CHROMIUM_BIN}" --no-sandbox "$@"
+          exec flatpak run --system io.github.ungoogled_software.ungoogled_chromium --no-sandbox --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 "$@"
           EOF
           chmod +x /tmp/chromium-ci-wrapper
 
@@ -186,6 +188,18 @@ jobs:
           # panel resolution. This is visual-regression evidence, not a
           # headless-browser substitute.
           sleep 10
+          curl --silent --show-error --fail http://127.0.0.1:9222/json/list > benchmark-results/browser-targets.json
+          node <<'NODE'
+          const fs = require("node:fs");
+          const targets = JSON.parse(fs.readFileSync("benchmark-results/browser-targets.json", "utf8"));
+          const page = targets.find((target) => target.type === "page" && target.url.startsWith("http://127.0.0.1:8080/"));
+          if (!page) {
+            console.error("Chromium did not expose a page at the MagicMirror URL.");
+            console.error(targets.map(({ type, url, title }) => ({ type, url, title })));
+            process.exit(1);
+          }
+          console.log(JSON.stringify({ url: page.url, title: page.title }, null, 2));
+          NODE
           DISPLAY=:99 import -window root -silent benchmark-results/kiosk-screen-1920x1080.png
           identify benchmark-results/kiosk-screen-1920x1080.png
 
