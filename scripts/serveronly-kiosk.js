@@ -96,21 +96,32 @@ async function waitForServer(url) {
   fail(`MagicMirror did not become reachable at ${url.href} within ${timeout} ms. Check the server service and network connection.`);
 }
 
-async function main() {
-  const remoteUrl = process.env.MM_KIOSK_URL;
-  const url = remoteUrl ? getRemoteMirrorUrl(remoteUrl) : getMirrorUrl(loadConfig());
-  await waitForServer(url);
-
-  const browser = process.env.MM_BROWSER_BIN || "chromium";
+function buildBrowserArgs(url, env = process.env) {
   const args = [
     "--kiosk",
     "--no-first-run",
     "--disable-session-crashed-bubble",
     "--disable-infobars",
     "--noerrdialogs",
-    "--disable-features=Translate",
-    url.href
+    "--disable-features=Translate"
   ];
+
+  // This kiosk-only option disables crash-report collection without changing
+  // page rendering. Keep it opt-in until the controlled A/B test is accepted.
+  if (env.MM_KIOSK_DISABLE_BREAKPAD === "1") {
+    args.push("--disable-breakpad");
+  }
+  args.push(url.href);
+  return args;
+}
+
+async function main() {
+  const remoteUrl = process.env.MM_KIOSK_URL;
+  const url = remoteUrl ? getRemoteMirrorUrl(remoteUrl) : getMirrorUrl(loadConfig());
+  await waitForServer(url);
+
+  const browser = process.env.MM_BROWSER_BIN || "chromium";
+  const args = buildBrowserArgs(url);
 
   console.log(`[MagicMirror kiosk] Starting ${browser} in kiosk mode`);
   const child = spawn(browser, args, { stdio: "inherit" });
@@ -138,4 +149,4 @@ if (require.main === module) {
   main().catch((error) => fail(error.message));
 }
 
-module.exports = { getMirrorUrl, getRemoteMirrorUrl, requestReady, waitForServer };
+module.exports = { getMirrorUrl, getRemoteMirrorUrl, requestReady, waitForServer, buildBrowserArgs };
