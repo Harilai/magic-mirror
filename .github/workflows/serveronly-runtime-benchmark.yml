@@ -176,6 +176,7 @@ jobs:
             --setenv="HOME=${HOME}" \
             --setenv="DISPLAY=:99" \
             --setenv="MM_BROWSER_BIN=/tmp/chromium-ci-wrapper" \
+            --setenv="MM_KIOSK_DISABLE_BREAKPAD=1" \
             /bin/bash -c 'npm run server:kiosk >> benchmark-results/kiosk.log 2>&1'
 
           sleep 20
