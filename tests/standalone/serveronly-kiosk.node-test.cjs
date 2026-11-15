@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const http = require("node:http");
-const { getRemoteMirrorUrl, requestReady } = require("../../scripts/serveronly-kiosk");
+const { getRemoteMirrorUrl, requestReady, buildBrowserArgs } = require("../../scripts/serveronly-kiosk");
 
 test("remote kiosk URL accepts HTTP and normalises a base path", () => {
   const url = getRemoteMirrorUrl("http://192.168.25.10:8080/mirror");
@@ -36,6 +36,28 @@ test("remote kiosk URL rejects credentials, queries, fragments and malformed val
   assert.throws(() => getRemoteMirrorUrl(""), /non-empty HTTP\(S\) URL/);
 });
 
+
+
+test("kiosk browser defaults preserve the existing rendering-related arguments", () => {
+  const url = new URL("http://127.0.0.1:8080/");
+  assert.deepEqual(buildBrowserArgs(url, {}), [
+    "--kiosk",
+    "--no-first-run",
+    "--disable-session-crashed-bubble",
+    "--disable-infobars",
+    "--noerrdialogs",
+    "--disable-features=Translate",
+    "http://127.0.0.1:8080/"
+  ]);
+});
+
+test("crash-report suppression is opt-in and does not alter the kiosk URL", () => {
+  const url = new URL("http://127.0.0.1:8080/");
+  const args = buildBrowserArgs(url, { MM_KIOSK_DISABLE_BREAKPAD: "1" });
+  assert.equal(args.includes("--disable-breakpad"), true);
+  assert.equal(args.at(-1), "http://127.0.0.1:8080/");
+  assert.equal(args.filter((value) => value === "--disable-breakpad").length, 1);
+});
 
 test("remote readiness probe verifies a reachable HTTP server", async () => {
   const server = http.createServer((request, response) => {
