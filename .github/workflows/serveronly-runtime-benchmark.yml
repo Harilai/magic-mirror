@@ -73,8 +73,7 @@ jobs:
           if (!source.includes('logLevel: "DEBUG"')) {
             source = source.replace(marker, marker + '\n\t\t\t\tlogLevel: "DEBUG",');
           }
-          if (!source.includes('wmsImageSize: 1800,')) throw new Error("Expected 1800px WMS source size in CI config.");
-          source = source.replace('wmsImageSize: 1800,', 'wmsImageSize: 700,');
+          if (!source.includes('wmsImageSize: 700,')) throw new Error("Expected tested 700px WMS source size in config/config.js.");
           fs.writeFileSync(file, source);
           console.log("Enabled DEBUG logging and a 700px source image for MMM-Meteosat in the ephemeral CI checkout only.");
           NODE
