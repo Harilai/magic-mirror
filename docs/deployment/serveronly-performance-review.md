@@ -230,3 +230,31 @@ The benchmark input is synthetic and the runner is a hosted x86-64 server. These
 The project config now reads the `MMM-Remote-Control` API key only from `MM_REMOTE_CONTROL_API_KEY`. The example backend systemd unit loads the optional, untracked file `~/.config/magicmirror/secrets.env`. The device diagnostic distinguishes an environment-sourced key, a non-environment key, and a missing key; the diagnostic does not print key material.
 
 A key was previously committed to the repository. It must be replaced with a newly generated local key before the backend is exposed to the LAN. The old value remains in Git history, so do not reuse it. With `secureEndpoints: true`, a missing key blocks protected Remote Control operations instead of silently opening them.
+
+
+## Provisional CI runtime evidence — 16 November 2026
+
+A 10-minute Serveronly + Chromium run completed on GitHub Actions run [43706786747](https://github.com/Harilai/magic-mirror/actions/runs/43706786747), Ubuntu 24.04 x86-64, Node.js 22.22.2, using an ungoogled Chromium Flatpak build.
+
+Recorded values:
+
+- 296 resource samples at 2-second intervals.
+- Peak target-process PSS: 720,989,184 bytes (687.6 MiB).
+- Peak target-process RSS: 1,784,889,344 bytes (1,702.0 MiB); this is an aggregate RSS figure and double-counts shared pages.
+- cgroup `memory.peak`: 369,147,904 bytes (352.1 MiB), with a 1 GiB hard limit and swap limit of zero.
+- cgroup memory events: `oom=0`, `oom_kill=0`, `max=0`.
+
+**Important qualification:** process PSS and cgroup accounting are materially inconsistent. The cgroup value must not be used by itself to claim that the entire Chromium + Serveronly footprint stayed below 1 GiB. Possible causes include file-cache pages charged before the cgroup workload started or browser processes running outside the slice. The report does not prove which cause applied.
+
+The screen capture confirms that Clock, Calendar and Open-Meteo rendered, but MMM-Meteosat still displayed its no-image message. The server log also reports that `modules/MMM-Spotify/spotify.config.json` is absent; live Spotify authentication and playback were therefore not tested.
+
+Follow-up runs add:
+- a direct EUMETSAT WMS download and Sharp render probe;
+- DEBUG logging for MMM-Meteosat in the disposable CI checkout;
+- Chromium DevTools DOM and browser-event diagnostics;
+- direct Playwright Chromium execution, with an explicit audit that browser processes remain in the 1 GiB cgroup;
+- a cold page-cache start, so code and library pages are not already charged to the runner's host cgroup.
+
+Runs [43850646000](https://github.com/Harilai/magic-mirror/actions/runs/43850646000), [43851078779](https://github.com/Harilai/magic-mirror/actions/runs/43851078779) and [43851972022](https://github.com/Harilai/magic-mirror/actions/runs/43851972022) are diagnostic iterations, not physical-board tests. Their outcomes must be inspected before using any revised memory number for hardware sizing.
+
+Until a process-audited, cold-cache run is complete and the full module set has been checked, the 1 GiB experiment remains preliminary. It does not certify a 2 GB Raspberry Pi, browser GPU acceleration, thermal behaviour, or overnight operation in the final mirror enclosure.
