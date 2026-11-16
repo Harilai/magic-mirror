@@ -248,8 +248,24 @@ Recorded values:
 
 The screen capture confirms that Clock, Calendar and Open-Meteo rendered, but MMM-Meteosat still displayed its no-image message. The server log also reports that `modules/MMM-Spotify/spotify.config.json` is absent; live Spotify authentication and playback were therefore not tested.
 
+A second 10-minute run completed on [43851078779](https://github.com/Harilai/magic-mirror/actions/runs/43851078779), now using the Playwright Chromium executable directly. Its process audit found 19 matching application processes, including 14 Chromium processes, and **no process outside the 1 GiB cgroup**. The cgroup accounting and process PSS are now materially closer:
+
+- 299 samples at 2-second intervals.
+- Peak target-process PSS: 683,410,432 bytes (651.7 MiB).
+- Peak target-process RSS: 1,632,??? bytes (the JSON report remains the source of truth; RSS is an aggregate and double-counts shared pages).
+- cgroup `memory.peak`: 704,004,096 bytes (671.4 MiB), against `memory.max=1,073,741,824` bytes (1 GiB).
+- Swap limit: zero; memory events `oom=0`, `oom_kill=0`, `max=0`.
+
+This is a credible **warm-cache, headless-X11 CI baseline** with the browser process tree inside the cgroup. At the recorded cgroup peak it used about 65.6% of the 1 GiB limit. It is not a target-device measurement and does not include a successful Meteosat image download/Sharp render: the source image request still timed out, and real Spotify playback has no provisioned OAuth credentials.
+
+For the source failure, the direct probe and the live module both reached EUMETSAT GetCapabilities successfully, but the 1800 × 1800 GetMap body did not finish before the 90-second request timeout. The browser therefore had no satellite image to display. A subsequent iteration tests a 700 × 700 WMS source, matching the module's 700px processed output for a 350px CSS display. The result will determine whether lowering the source size is a workable fix.
+
 Follow-up runs add:
 - a direct EUMETSAT WMS download and Sharp render probe;
+- DEBUG logging for MMM-Meteosat in the disposable CI checkout;
+- Chromium DevTools DOM and browser-event diagnostics;
+- direct Playwright Chromium execution, with an explicit audit that browser processes remain in the 1 GiB cgroup;
+- a cold page-cache start, so code and library pages are not already charged to the runner's host cgroup.
 - DEBUG logging for MMM-Meteosat in the disposable CI checkout;
 - Chromium DevTools DOM and browser-event diagnostics;
 - direct Playwright Chromium execution, with an explicit audit that browser processes remain in the 1 GiB cgroup;
