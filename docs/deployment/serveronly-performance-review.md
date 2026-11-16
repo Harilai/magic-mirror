@@ -271,17 +271,12 @@ This cold-cache run did not kill a process, but it reached the memory limit repe
 
 For the source failure, the direct probe and the live module both reached EUMETSAT GetCapabilities successfully, but the 1800 × 1800 GetMap body did not finish before the 90-second request timeout. The browser therefore had no satellite image to display. A new run [43853695781](https://github.com/Harilai/magic-mirror/actions/runs/43853695781) now tests a 700 × 700 WMS source, matching the module's 700px processed output for a 350px CSS display. Its probe completed quickly; the artifact must still be inspected to confirm it returned an image and the full application rendered it.
 
-Follow-up runs add:
+The follow-up workflow iterations added:
 - a direct EUMETSAT WMS download and Sharp render probe;
 - DEBUG logging for MMM-Meteosat in the disposable CI checkout;
 - Chromium DevTools DOM and browser-event diagnostics;
 - direct Playwright Chromium execution, with an explicit audit that browser processes remain in the 1 GiB cgroup;
-- a cold page-cache start, so code and library pages are not already charged to the runner's host cgroup.
-- DEBUG logging for MMM-Meteosat in the disposable CI checkout;
-- Chromium DevTools DOM and browser-event diagnostics;
-- direct Playwright Chromium execution, with an explicit audit that browser processes remain in the 1 GiB cgroup;
-- a cold page-cache start, so code and library pages are not already charged to the runner's host cgroup.
-
+- a cold page-cache start, so executable and library pages are faulted into the benchmark cgroup rather than being pre-cached by the runner.
 Runs [43850646000](https://github.com/Harilai/magic-mirror/actions/runs/43850646000), [43851078779](https://github.com/Harilai/magic-mirror/actions/runs/43851078779) and [43851972022](https://github.com/Harilai/magic-mirror/actions/runs/43851972022) are diagnostic iterations, not physical-board tests. Their outcomes must be inspected before using any revised memory number for hardware sizing.
 
-Until a process-audited, cold-cache run is complete and the full module set has been checked, the 1 GiB experiment remains preliminary. It does not certify a 2 GB Raspberry Pi, browser GPU acceleration, thermal behaviour, or overnight operation in the final mirror enclosure.
+The process-audited cold-cache run is now complete, but the 1 GiB experiment remains a CI stress test rather than target-device certification. The tested 1 GiB cgroup hit its limit repeatedly while reclaiming file cache; the full Meteosat image path and real Spotify playback are still not validated, and the runner does not reproduce the physical device's GPU, RAM-sharing, thermal or enclosure characteristics. These results do not certify a 2 GB Raspberry Pi or overnight operation in the final mirror enclosure.
