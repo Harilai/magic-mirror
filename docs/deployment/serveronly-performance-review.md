@@ -240,8 +240,8 @@ Recorded values:
 
 - 296 resource samples at 2-second intervals.
 - Peak target-process PSS: 720,989,184 bytes (687.6 MiB).
-- Peak target-process RSS: 1,784,889,344 bytes (1,702.0 MiB); this is an aggregate RSS figure and double-counts shared pages.
-- cgroup `memory.peak`: 369,147,904 bytes (352.1 MiB), with a 1 GiB hard limit and swap limit of zero.
+- Peak target-process RSS: 1,784,889,344 bytes (1,702.2 MiB); this is an aggregate RSS figure and double-counts shared pages.
+- cgroup `memory.peak`: 369,147,904 bytes (352.0 MiB), with a 1 GiB hard limit and swap limit of zero.
 - cgroup memory events: `oom=0`, `oom_kill=0`, `max=0`.
 
 **Important qualification:** process PSS and cgroup accounting are materially inconsistent. The cgroup value must not be used by itself to claim that the entire Chromium + Serveronly footprint stayed below 1 GiB. Possible causes include file-cache pages charged before the cgroup workload started or browser processes running outside the slice. The report does not prove which cause applied.
