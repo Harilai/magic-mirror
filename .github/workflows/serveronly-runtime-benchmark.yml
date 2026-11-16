@@ -67,13 +67,16 @@ jobs:
           node <<'NODE'
           const fs = require("node:fs");
           const file = "config/config.js";
-          const source = fs.readFileSync(file, "utf8");
+          let source = fs.readFileSync(file, "utf8");
           const marker = '\t\t\tmodule: "MMM-Meteosat",\n\t\t\tposition: "bottom_left",\n\t\t\tconfig: {';
           if (!source.includes(marker)) throw new Error("MMM-Meteosat config block was not found.");
           if (!source.includes('logLevel: "DEBUG"')) {
-            fs.writeFileSync(file, source.replace(marker, marker + '\n\t\t\t\tlogLevel: "DEBUG",'));
+            source = source.replace(marker, marker + '\n\t\t\t\tlogLevel: "DEBUG",');
           }
-          console.log("Enabled DEBUG logging for MMM-Meteosat in the ephemeral CI checkout only.");
+          if (!source.includes('wmsImageSize: 1800,')) throw new Error("Expected 1800px WMS source size in CI config.");
+          source = source.replace('wmsImageSize: 1800,', 'wmsImageSize: 700,');
+          fs.writeFileSync(file, source);
+          console.log("Enabled DEBUG logging and a 700px source image for MMM-Meteosat in the ephemeral CI checkout only.");
           NODE
 
       - name: Probe EUMETSAT WMS and image pipeline
@@ -94,7 +97,7 @@ jobs:
               startedAt: new Date().toISOString(),
               endpoint: "https://view.eumetsat.int/geoserver/wms",
               product: process.env.MM_METEOSAT_PRODUCT || "geocolour",
-              configuredSourceSize: 1800,
+              configuredSourceSize: 700,
               configuredRenderSize: 700
             };
             const controller = new AbortController();
@@ -122,7 +125,7 @@ jobs:
                 profile: selection.profile,
                 targetFile: sourceFile,
                 tempFile: path.join(root, "source.tmp"),
-                size: 1800,
+                size: 700,
                 userAgent: "MagicMirror-MMM-Meteosat-CI-Diagnostic/1.0",
                 imageTime: capabilities.imageTime,
                 debug,
