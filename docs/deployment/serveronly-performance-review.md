@@ -258,7 +258,18 @@ A second 10-minute run completed on [43851078779](https://github.com/Harilai/mag
 
 This is a credible **warm-cache, headless-X11 CI baseline** with the browser process tree inside the cgroup. At the recorded cgroup peak it used about 65.6% of the 1 GiB limit. It is not a target-device measurement and does not include a successful Meteosat image download/Sharp render: the source image request still timed out, and real Spotify playback has no provisioned OAuth credentials.
 
-For the source failure, the direct probe and the live module both reached EUMETSAT GetCapabilities successfully, but the 1800 × 1800 GetMap body did not finish before the 90-second request timeout. The browser therefore had no satellite image to display. A subsequent iteration tests a 700 × 700 WMS source, matching the module's 700px processed output for a 350px CSS display. The result will determine whether lowering the source size is a workable fix.
+A third 10-minute run, [43851972022](https://github.com/Harilai/magic-mirror/actions/runs/43851972022), repeated the direct Chromium test after clearing the host page cache before starting the services. The process audit again found 19 matching processes, including 14 Chromium processes, with none outside the benchmark cgroup. It recorded:
+
+- 296 samples at 2-second intervals.
+- Peak target-process PSS: 673,184,768 bytes (642.0 MiB).
+- Peak target-process RSS: 1,574,600,704 bytes (1,501.7 MiB; aggregate RSS double-counts shared pages).
+- cgroup `memory.peak`: 1,073,786,880 bytes (1,024.04 MiB), slightly above the configured 1 GiB value due accounting/limit-boundary overshoot; `memory.current` at report time was 1,053,462,528 bytes (1,004.0 MiB).
+- `memory.events`: `max=352`, `oom=0`, `oom_kill=0`; swap remained disabled.
+- `memory.stat` shows 635,596,800 bytes (606.0 MiB) of file cache at capture time; direct reclaim scanned 17,206 pages and reclaimed 16,904 pages.
+
+This cold-cache run did not kill a process, but it reached the memory limit repeatedly and has virtually no headroom under a 1 GiB cap. Together with the warm-cache result, it shows the app's total cgroup charge is sensitive to cold file-backed pages, even though process PSS stayed near 642 MiB. Do not describe a 1 GiB deployment budget as having comfortable margin.
+
+For the source failure, the direct probe and the live module both reached EUMETSAT GetCapabilities successfully, but the 1800 × 1800 GetMap body did not finish before the 90-second request timeout. The browser therefore had no satellite image to display. A new run [43853695781](https://github.com/Harilai/magic-mirror/actions/runs/43853695781) now tests a 700 × 700 WMS source, matching the module's 700px processed output for a 350px CSS display. Its probe completed quickly; the artifact must still be inspected to confirm it returned an image and the full application rendered it.
 
 Follow-up runs add:
 - a direct EUMETSAT WMS download and Sharp render probe;
