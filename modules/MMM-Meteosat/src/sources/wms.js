@@ -110,6 +110,14 @@ async function streamResponseToFile(response, destination, maxBytes, { signal = 
   } catch (error) {
     fs.rmSync(destination, { force: true });
     if (signal?.aborted || error.name === "AbortError" || error.code === "ABORT_ERR") {
+      const timeoutMatch = String(signal?.reason?.message || "").match(/^Request timed out after (\\d+) ms\\.$/);
+      if (timeoutMatch) {
+        const timeoutMs = Number(timeoutMatch[1]);
+        throw new WmsRequestError(`EUMETView image response timed out after ${timeoutMs} ms.`, {
+          retryable: true,
+          details: { request: "GetMap", timeoutMs, receivedBytes: total }
+        });
+      }
       const aborted = new Error("Response streaming aborted.");
       aborted.name = "AbortError";
       throw aborted;
@@ -238,10 +246,22 @@ async function downloadWmsImage({ profile, targetFile, tempFile, size, userAgent
   let response;
   let streamed;
   let uniqueTempFile = null;
+  let contentType = null;
+  let contentLength = null;
+  let responseHeadersDurationMs = null;
   try {
     response = await fetch(url, {
       headers: { Accept: "image/png,image/*;q=0.9", "User-Agent": userAgent },
       signal: requestSignal.signal
+    });
+    contentType = response.headers.get("content-type");
+    contentLength = response.headers.get("content-length");
+    responseHeadersDurationMs = Math.round(performance.now() - started);
+    debug?.("GetMap response headers", {
+      status: response.status,
+      contentType,
+      contentLength,
+      responseHeadersDurationMs
     });
     if (!response.ok) {
       await discardResponseBody(response);
@@ -250,17 +270,25 @@ async function downloadWmsImage({ profile, targetFile, tempFile, size, userAgent
       streamed = await streamResponseToFile(response, uniqueTempFile, MAX_IMAGE_BYTES, { signal: requestSignal.signal });
     }
   } catch (error) {
-    if (error instanceof WmsRequestError || error.name === "AbortError") throw error;
+    if (error instanceof WmsRequestError) {
+      error.details = {
+        ...(error.details || {}),
+        contentType,
+        contentLength,
+        responseHeadersDurationMs
+      };
+      throw error;
+    }
+    if (error.name === "AbortError") throw error;
     throw new WmsRequestError(`EUMETView WMS request failed: ${sanitiseLogText(error.message)}`, {
       retryable: !signal?.aborted,
-      details: { request: "GetMap", durationMs: Math.round(performance.now() - started) }
+      details: { request: "GetMap", durationMs: Math.round(performance.now() - started), contentType, contentLength, responseHeadersDurationMs }
     });
   } finally {
     requestSignal.cleanup();
   }
 
   const durationMs = Math.round(performance.now() - started);
-  const contentType = response.headers.get("content-type");
   if (!response.ok) {
     throw new WmsRequestError(`EUMETView WMS request failed: HTTP ${response.status}.`, {
       status: response.status,
