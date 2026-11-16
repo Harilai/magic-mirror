@@ -158,3 +158,36 @@ test("WMS image download streams, validates, hashes and atomically stores the re
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+
+test("stream request timeouts become retryable WMS errors and clean partial files", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "mmm-meteosat-timeout-"));
+  const destination = path.join(root, "timeout.bin");
+  const controller = new AbortController();
+  const body = Readable.from((async function* () {
+    yield Buffer.from("partial-response");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    yield Buffer.from("remaining-response");
+  })());
+
+  try {
+    const operation = streamResponseToFile(
+      { headers: new Headers(), body },
+      destination,
+      1024,
+      { signal: controller.signal }
+    );
+    setTimeout(() => controller.abort(new Error("Request timed out after 90 ms.")), 10);
+
+    await assert.rejects(operation, (error) =>
+      error instanceof WmsRequestError
+      && error.retryable === true
+      && error.details.request === "GetMap"
+      && error.details.timeoutMs === 90
+      && error.details.receivedBytes >= Buffer.byteLength("partial-response")
+    );
+    assert.equal(fs.existsSync(destination), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
