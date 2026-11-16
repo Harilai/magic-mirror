@@ -41,10 +41,7 @@ jobs:
         run: |
           mkdir -p benchmark-results
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth imagemagick flatpak dbus-x11
-          sudo flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install --system --noninteractive -y flathub io.github.ungoogled_software.ungoogled_chromium
-          flatpak info --system io.github.ungoogled_software.ungoogled_chromium | tee benchmark-results/browser-info.txt
+          sudo apt-get install -y xvfb xauth imagemagick
 
       - name: Install MagicMirror dependencies
         run: |
@@ -54,6 +51,16 @@ jobs:
           npm ci --prefix modules/MMM-Meteosat --no-audit --no-fund
           npm install --prefix modules/MMM-Spotify --omit=dev --no-audit --no-fund
           npm install --prefix modules/MMM-Remote-Control --omit=dev --no-audit --no-fund
+
+          # Use Playwright's Chromium binary directly so that all browser
+          # child processes inherit the systemd service cgroup.
+          CHROMIUM_BIN="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          if [ ! -x "${CHROMIUM_BIN}" ]; then
+            npx playwright install chromium
+            CHROMIUM_BIN="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          fi
+          test -x "${CHROMIUM_BIN}"
+          "${CHROMIUM_BIN}" --version | tee benchmark-results/browser-info.txt
 
       - name: Enable diagnostic logging for Meteosat
         run: |
@@ -254,12 +261,13 @@ jobs:
       - name: Launch Chromium kiosk inside constrained slice
         run: |
           set -euo pipefail
-          # Use Flathub's ungoogled Chromium build for the visual test. It is
-          # an open-source Chromium build without Google's additional Chrome
-          # terms dialog; it is used only in CI, not selected as target hardware.
-          cat > /tmp/chromium-ci-wrapper <<'EOF'
+          # Chromium runs as a direct child of the systemd kiosk service.
+          # --no-sandbox is restricted to this disposable GitHub CI runner.
+          CHROMIUM_BIN="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          test -x "${CHROMIUM_BIN}"
+          cat > /tmp/chromium-ci-wrapper <<EOF
           #!/usr/bin/env bash
-          exec dbus-run-session -- flatpak run --system io.github.ungoogled_software.ungoogled_chromium --no-sandbox --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 "$@"
+          exec "${CHROMIUM_BIN}" --no-sandbox --disable-dev-shm-usage --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 "\$@"
           EOF
           chmod +x /tmp/chromium-ci-wrapper
 
@@ -290,11 +298,42 @@ jobs:
             /bin/bash -c 'npm run server:kiosk >> benchmark-results/kiosk.log 2>&1'
 
           sleep 20
-          if ! systemctl is-active --quiet magicmirror-kiosk.service || ! pgrep -af 'chrome|chromium' >/dev/null; then
+          if ! systemctl is-active --quiet magicmirror-kiosk.service || ! pgrep -af '[c]hrome|[c]hromium' >/dev/null; then
             sudo journalctl -u magicmirror-kiosk.service --no-pager -n 100 || true
             cat benchmark-results/kiosk.log || true
             exit 1
           fi
+
+          # A hard cgroup limit is meaningful only if Chromium's complete
+          # process tree remains inside the constrained slice. Flatpak may
+          # delegate application processes to separate systemd scopes, so
+          # the benchmark uses the direct Playwright binary and audits /proc.
+          CGROUP_REL="$(systemctl show --property=ControlGroup --value magicmirror-benchmark.slice)"
+          CGROUP_PATH="/sys/fs/cgroup${CGROUP_REL}"
+          node - "${CGROUP_PATH}" <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const cgroupPath = process.argv[2];
+          const expected = fs.realpathSync(cgroupPath);
+          const matched = [];
+          for (const pid of fs.readdirSync("/proc").filter((value) => /^\d+$/.test(value))) {
+            try {
+              const command = fs.readFileSync(path.join("/proc", pid, "cmdline"), "utf8").replace(/\0/g, " ").trim();
+              if (!/(chrome|chromium|crashpad|Xvfb :99|node \.\/serveronly|serveronly-kiosk)/i.test(command)) continue;
+              const line = fs.readFileSync(path.join("/proc", pid, "cgroup"), "utf8").split("\n").find((value) => value.startsWith("0::"));
+              const group = line ? line.slice(3) : "";
+              const inside = group === expected.replace("/sys/fs/cgroup", "") || group.startsWith(expected.replace("/sys/fs/cgroup", "") + "/");
+              matched.push({ pid: Number(pid), command: command.slice(0, 220), cgroup: group, inside });
+            } catch {}
+          }
+          const chromium = matched.filter((entry) => /chrome|chromium/i.test(entry.command));
+          const outside = matched.filter((entry) => !entry.inside);
+          const report = { expectedCgroup: expected, matchingProcessCount: matched.length, chromiumProcessCount: chromium.length, outsideCgroup: outside, processes: matched };
+          fs.writeFileSync("benchmark-results/cgroup-process-audit.json", JSON.stringify(report, null, 2));
+          console.log("[Cgroup process audit]", JSON.stringify(report, null, 2));
+          if (!chromium.length) throw new Error("No Chromium process was found in /proc.");
+          if (outside.length) throw new Error("One or more application processes escaped the constrained cgroup.");
+          NODE
 
           # Capture the actual kiosk X11 framebuffer at the intended Full HD
           # panel resolution. This is visual-regression evidence, not a
