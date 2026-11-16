@@ -256,7 +256,7 @@ A second 10-minute run completed on [43851078779](https://github.com/Harilai/mag
 - cgroup `memory.peak`: 704,004,096 bytes (671.4 MiB), against `memory.max=1,073,741,824` bytes (1 GiB).
 - Swap limit: zero; memory events `oom=0`, `oom_kill=0`, `max=0`.
 
-This is a credible **warm-cache, headless-X11 CI baseline** with the browser process tree inside the cgroup. At the recorded cgroup peak it used about 65.6% of the 1 GiB limit. It is not a target-device measurement and does not include a successful Meteosat image download/Sharp render: the source image request still timed out, and real Spotify playback has no provisioned OAuth credentials.
+This is a credible **warm-cache, Xvfb-backed Chromium kiosk CI baseline** with the browser process tree inside the cgroup. At the recorded cgroup peak it used about 65.6% of the 1 GiB limit. It is not a target-device measurement and does not include a successful Meteosat image download/Sharp render: the source image request still timed out, and real Spotify playback has no provisioned OAuth credentials.
 
 A third 10-minute run, [43851972022](https://github.com/Harilai/magic-mirror/actions/runs/43851972022), repeated the direct Chromium test after clearing the host page cache before starting the services. The process audit again found 19 matching processes, including 14 Chromium processes, with none outside the benchmark cgroup. It recorded:
 
@@ -269,7 +269,7 @@ A third 10-minute run, [43851972022](https://github.com/Harilai/magic-mirror/act
 
 This cold-cache run did not kill a process, but it reached the memory limit repeatedly and has virtually no headroom under a 1 GiB cap. Together with the warm-cache result, it shows the app's total cgroup charge is sensitive to cold file-backed pages, even though process PSS stayed near 642 MiB. Do not describe a 1 GiB deployment budget as having comfortable margin.
 
-For the source failure, the direct probe and the live module both reached EUMETSAT GetCapabilities successfully, but the 1800 × 1800 GetMap body did not finish before the 90-second request timeout. The browser therefore had no satellite image to display. A new run [43853695781](https://github.com/Harilai/magic-mirror/actions/runs/43853695781) now tests a 700 × 700 WMS source, matching the module's 700px processed output for a 350px CSS display. Its probe completed quickly; the artifact must still be inspected to confirm it returned an image and the full application rendered it.
+For the source failure, the direct probe and the live module both reached EUMETSAT GetCapabilities successfully, but the 1800 × 1800 GetMap body did not finish before the 90-second request timeout. The browser therefore had no satellite image to display. A new run [43853695781](https://github.com/Harilai/magic-mirror/actions/runs/43853695781) now tests a 700 × 700 WMS source, matching the module's 700px processed output for a 350px CSS display. The diagnostic step returned in 16 seconds; the artifact must still be inspected to confirm that it returned an actual image and that the full application rendered it.
 
 The follow-up workflow iterations added:
 - a direct EUMETSAT WMS download and Sharp render probe;
@@ -277,6 +277,6 @@ The follow-up workflow iterations added:
 - Chromium DevTools DOM and browser-event diagnostics;
 - direct Playwright Chromium execution, with an explicit audit that browser processes remain in the 1 GiB cgroup;
 - a cold page-cache start, so executable and library pages are faulted into the benchmark cgroup rather than being pre-cached by the runner.
-Runs [43850646000](https://github.com/Harilai/magic-mirror/actions/runs/43850646000), [43851078779](https://github.com/Harilai/magic-mirror/actions/runs/43851078779) and [43851972022](https://github.com/Harilai/magic-mirror/actions/runs/43851972022) are diagnostic iterations, not physical-board tests. Their outcomes must be inspected before using any revised memory number for hardware sizing.
+The completed runs [43850646000](https://github.com/Harilai/magic-mirror/actions/runs/43850646000), [43851078779](https://github.com/Harilai/magic-mirror/actions/runs/43851078779) and [43851972022](https://github.com/Harilai/magic-mirror/actions/runs/43851972022) are diagnostic CI iterations, not physical-board tests. The 700px source run [43853695781](https://github.com/Harilai/magic-mirror/actions/runs/43853695781) is still undergoing its ten-minute measurement and requires artifact review.
 
 The process-audited cold-cache run is now complete, but the 1 GiB experiment remains a CI stress test rather than target-device certification. The tested 1 GiB cgroup hit its limit repeatedly while reclaiming file cache; the full Meteosat image path and real Spotify playback are still not validated, and the runner does not reproduce the physical device's GPU, RAM-sharing, thermal or enclosure characteristics. These results do not certify a 2 GB Raspberry Pi or overnight operation in the final mirror enclosure.
