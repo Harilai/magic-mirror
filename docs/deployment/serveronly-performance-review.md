@@ -251,8 +251,8 @@ The screen capture confirms that Clock, Calendar and Open-Meteo rendered, but MM
 A second 10-minute run completed on [43851078779](https://github.com/Harilai/magic-mirror/actions/runs/43851078779), now using the Playwright Chromium executable directly. Its process audit found 19 matching application processes, including 14 Chromium processes, and **no process outside the 1 GiB cgroup**. The cgroup accounting and process PSS are now materially closer:
 
 - 299 samples at 2-second intervals.
-- Peak target-process PSS: 683,410,432 bytes (651.7 MiB).
-- Peak target-process RSS: 1,632,??? bytes (the JSON report remains the source of truth; RSS is an aggregate and double-counts shared pages).
+- Peak target-process PSS: 683,394,048 bytes (651.7 MiB).
+- Peak target-process RSS: 1,634,439,168 bytes (1,558.7 MiB; aggregate RSS double-counts shared pages).
 - cgroup `memory.peak`: 704,004,096 bytes (671.4 MiB), against `memory.max=1,073,741,824` bytes (1 GiB).
 - Swap limit: zero; memory events `oom=0`, `oom_kill=0`, `max=0`.
 
