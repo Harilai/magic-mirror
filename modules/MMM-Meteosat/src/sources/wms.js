@@ -110,7 +110,7 @@ async function streamResponseToFile(response, destination, maxBytes, { signal = 
   } catch (error) {
     fs.rmSync(destination, { force: true });
     if (signal?.aborted || error.name === "AbortError" || error.code === "ABORT_ERR") {
-      const timeoutMatch = String(signal?.reason?.message || "").match(/^Request timed out after (\\d+) ms\\.$/);
+      const timeoutMatch = String(signal?.reason?.message || "").match(/^Request timed out after (\d+) ms\.$/);
       if (timeoutMatch) {
         const timeoutMs = Number(timeoutMatch[1]);
         throw new WmsRequestError(`EUMETView image response timed out after ${timeoutMs} ms.`, {
