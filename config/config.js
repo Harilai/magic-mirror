@@ -93,7 +93,7 @@ const config = {
 				product: "geocolour", // infrared de noche
 				cacheId: "",
 				imageSize: 350,
-				wmsImageSize: 1800,
+				wmsImageSize: 700,
 				updateInterval: 10 * 60 * 1000,
 				showTimestamp: false,
     			showSource: false,
