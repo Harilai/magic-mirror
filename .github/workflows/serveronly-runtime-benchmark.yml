@@ -55,6 +55,115 @@ jobs:
           npm install --prefix modules/MMM-Spotify --omit=dev --no-audit --no-fund
           npm install --prefix modules/MMM-Remote-Control --omit=dev --no-audit --no-fund
 
+      - name: Enable diagnostic logging for Meteosat
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const file = "config/config.js";
+          const source = fs.readFileSync(file, "utf8");
+          const marker = '\t\t\tmodule: "MMM-Meteosat",\n\t\t\tposition: "bottom_left",\n\t\t\tconfig: {';
+          if (!source.includes(marker)) throw new Error("MMM-Meteosat config block was not found.");
+          if (!source.includes('logLevel: "DEBUG"')) {
+            fs.writeFileSync(file, source.replace(marker, marker + '\n\t\t\t\tlogLevel: "DEBUG",'));
+          }
+          console.log("Enabled DEBUG logging for MMM-Meteosat in the ephemeral CI checkout only.");
+          NODE
+
+      - name: Probe EUMETSAT WMS and image pipeline
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const os = require("node:os");
+          const path = require("node:path");
+          const { resolveProduct } = require("./modules/MMM-Meteosat/src/products");
+          const { fetchLatestImageTime, downloadWmsImage } = require("./modules/MMM-Meteosat/src/sources/wms");
+          const { processImage } = require("./modules/MMM-Meteosat/src/imageProcessor");
+
+          (async () => {
+            const root = fs.mkdtempSync(path.join(os.tmpdir(), "meteosat-ci-probe-"));
+            const report = {
+              startedAt: new Date().toISOString(),
+              endpoint: "https://view.eumetsat.int/geoserver/wms",
+              product: process.env.MM_METEOSAT_PRODUCT || "geocolour",
+              configuredSourceSize: 1800,
+              configuredRenderSize: 700
+            };
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(new Error("Diagnostic probe exceeded 120 seconds.")), 120000);
+            const debug = (message, details) => console.log("[Meteosat probe] " + message + ": " + JSON.stringify(details || {}));
+            try {
+              const selection = resolveProduct(report.product);
+              report.layer = selection.profile.layer;
+              const capabilities = await fetchLatestImageTime(
+                selection.profile,
+                "MagicMirror-MMM-Meteosat-CI-Diagnostic/1.0",
+                debug,
+                controller.signal
+              );
+              report.capabilities = {
+                source: capabilities.source,
+                imageTime: capabilities.imageTime || null,
+                dimension: capabilities.dimension || null,
+                durationMs: capabilities.durationMs
+              };
+
+              const sourceFile = path.join(root, "source.png");
+              const processedFile = path.join(root, "rendered.png");
+              const downloaded = await downloadWmsImage({
+                profile: selection.profile,
+                targetFile: sourceFile,
+                tempFile: path.join(root, "source.tmp"),
+                size: 1800,
+                userAgent: "MagicMirror-MMM-Meteosat-CI-Diagnostic/1.0",
+                imageTime: capabilities.imageTime,
+                debug,
+                signal: controller.signal
+              });
+              report.download = {
+                bytes: downloaded.bytes,
+                durationMs: downloaded.durationMs,
+                imageTime: downloaded.imageTime,
+                source: downloaded.source,
+                metadata: downloaded.metadata
+              };
+
+              const processed = await processImage({
+                sourceFile,
+                targetFile: processedFile,
+                tempFile: path.join(root, "rendered.tmp"),
+                renderSize: 700,
+                signal: controller.signal,
+                debug
+              });
+              report.processing = processed;
+              report.outputBytes = fs.statSync(processedFile).size;
+              report.status = "success";
+            } catch (error) {
+              report.status = "failed";
+              report.error = {
+                name: error.name,
+                message: error.message,
+                status: error.status || null,
+                retryable: error.retryable === true,
+                details: error.details || null
+              };
+              console.error("[Meteosat probe] FAILED", JSON.stringify(report.error));
+              process.exitCode = 1;
+            } finally {
+              clearTimeout(timeout);
+              report.finishedAt = new Date().toISOString();
+              fs.writeFileSync("benchmark-results/meteosat-probe.json", JSON.stringify(report, null, 2));
+              fs.rmSync(root, { recursive: true, force: true });
+              console.log("[Meteosat probe report]", JSON.stringify(report, null, 2));
+            }
+          })().catch((error) => {
+            console.error(error);
+            process.exitCode = 1;
+          });
+          NODE
+
       - name: Configure strict 1 GiB cgroup v2 limit
         run: |
           set -euo pipefail
@@ -122,6 +231,7 @@ jobs:
             --setenv="PATH=${PATH}" \
             --setenv="HOME=${HOME}" \
             --setenv="MM_REMOTE_CONTROL_API_KEY=${MM_REMOTE_CONTROL_API_KEY}" \
+            --setenv="MM_METEOSAT_LOG_LEVEL=DEBUG" \
             /bin/bash -c 'npm run server >> benchmark-results/server.log 2>&1'
 
           for attempt in $(seq 1 60); do
@@ -224,6 +334,61 @@ jobs:
           DISPLAY=:99 import -window root -silent benchmark-results/kiosk-screen-final.png
           curl --silent --show-error --fail http://127.0.0.1:9222/json/list > benchmark-results/browser-targets-final.json
           identify benchmark-results/kiosk-screen-final.png
+
+          # Inspect the rendered modules through Chromium DevTools Protocol.
+          node <<'NODE'
+          const fs = require("node:fs");
+          (async () => {
+            const targets = JSON.parse(fs.readFileSync("benchmark-results/browser-targets-final.json", "utf8"));
+            const page = targets.find((target) => target.type === "page" && target.url.startsWith("http://127.0.0.1:8080/"));
+            if (!page?.webSocketDebuggerUrl) throw new Error("MagicMirror browser target is missing a DevTools WebSocket.");
+            const ws = new WebSocket(page.webSocketDebuggerUrl);
+            const pending = new Map();
+            const events = [];
+            let nextId = 0;
+            ws.addEventListener("message", (event) => {
+              const message = JSON.parse(event.data.toString());
+              if (message.id && pending.has(message.id)) {
+                const waiter = pending.get(message.id);
+                pending.delete(message.id);
+                if (message.error) waiter.reject(new Error(message.error.message));
+                else waiter.resolve(message.result);
+              } else if (message.method === "Runtime.exceptionThrown" || message.method === "Log.entryAdded" || message.method === "Network.loadingFailed") {
+                events.push(message);
+              }
+            });
+            const call = (method, params = {}) => new Promise((resolve, reject) => {
+              const id = ++nextId;
+              pending.set(id, { resolve, reject });
+              ws.send(JSON.stringify({ id, method, params }));
+            });
+            try {
+              await new Promise((resolve, reject) => {
+                ws.addEventListener("open", resolve, { once: true });
+                ws.addEventListener("error", reject, { once: true });
+              });
+              await call("Runtime.enable");
+              await call("Log.enable");
+              await call("Network.enable");
+              const expression = '(() => { const mr=document.querySelector(".MMM-Meteosat"); const mv=mr?.querySelector(".mmm-meteosat"); const im=mv?.querySelector("img.mmm-meteosat-image"); const sr=document.querySelector(".MMM-Spotify"); return {title:document.title,meteosat:{modulePresent:Boolean(mr),statusText:mv?.innerText||"",imagePresent:Boolean(im),imageLoaded:Boolean(im&&im.complete&&im.naturalWidth>0),imageNaturalWidth:im?.naturalWidth||0,imageNaturalHeight:im?.naturalHeight||0,imageSource:im?.currentSrc||im?.src||null},spotify:{modulePresent:Boolean(sr),visibleText:sr?.innerText||""},loadedMeteosatResources:performance.getEntriesByType("resource").map(x=>x.name).filter(x=>x.includes("MMM-Meteosat"))}; })()';
+              const result = await call("Runtime.evaluate", { returnByValue: true, expression });
+              const report = {
+                capturedAt: new Date().toISOString(),
+                dom: result.result?.value || null,
+                browserEvents: events
+              };
+              fs.writeFileSync("benchmark-results/browser-diagnostics.json", JSON.stringify(report, null, 2));
+              console.log("[Browser diagnostics]", JSON.stringify(report, null, 2));
+              if (!report.dom?.meteosat?.imageLoaded) console.warn("Meteosat image is not loaded in the browser.");
+              if (report.dom?.spotify?.modulePresent) console.log("Spotify module is present; real playback still requires user OAuth credentials and an active device.");
+            } finally {
+              ws.close();
+            }
+          })().catch((error) => {
+            console.error("Browser diagnostics failed:", error);
+            process.exitCode = 1;
+          });
+          NODE
 
           # Capture cgroup-level accounting (the hard limit applies to the
           # combined Node.js, Xvfb, kiosk launcher and Chromium process tree).
